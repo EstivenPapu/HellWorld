@@ -24,6 +24,13 @@ export class SpellSystem {
     return 1 - this.cooldowns[index] / SPELLS[index].cooldown;
   }
 
+  // Limpia hechizos en vuelo y esperas (al morir o descansar)
+  reset() {
+    this.cooldowns = SPELLS.map(() => 0);
+    this.projectiles = [];
+    this.rings = [];
+  }
+
   update(dt, player, input, camera, enemies, world) {
     this.cooldowns = this.cooldowns.map((c) => Math.max(0, c - dt));
 
@@ -48,7 +55,10 @@ export class SpellSystem {
     switch (SPELLS[index].id) {
       case 'flame':
         this.projectiles.push(
-          new Projectile(player.x, player.y, player.facing.x, player.facing.y, FLAME)
+          new Projectile(player.x, player.y, player.facing.x, player.facing.y, {
+            ...FLAME,
+            damage: Math.round(FLAME.damage * player.spellPower),
+          })
         );
         break;
 
@@ -57,7 +67,12 @@ export class SpellSystem {
           if (!e.alive) continue;
           const dist = Math.hypot(e.x - player.x, e.y - player.y);
           if (dist <= NOVA.radius + e.radius) {
-            e.takeDamage(NOVA.damage, player.x, player.y, NOVA.force);
+            e.takeDamage(
+              Math.round(NOVA.damage * player.spellPower),
+              player.x,
+              player.y,
+              NOVA.force
+            );
           }
         }
         this.rings.push({ x: player.x, y: player.y, age: 0 });

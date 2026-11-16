@@ -9,6 +9,7 @@ export class Input {
     this._attack = false;
     this._roll = false;
     this._spells = [false, false, false]; // 0: Llama, 1: Nova, 2: Escudo
+    this._interact = false;
 
     window.addEventListener('keydown', (e) => {
       if (!e.repeat) {
@@ -18,6 +19,7 @@ export class Input {
         }
         if (e.code === 'KeyQ') this._spells[1] = true;
         if (e.code === 'KeyE') this._spells[2] = true;
+        if (e.code === 'KeyF') this._interact = true;
       }
       this.keys.add(e.code);
     });
@@ -70,6 +72,20 @@ export class Input {
     const pressed = this._roll;
     this._roll = false;
     return pressed;
+  }
+
+  consumeInteract() {
+    const pressed = this._interact;
+    this._interact = false;
+    return pressed;
+  }
+
+  // Descarta las órdenes pendientes (para cuando el juego está en pausa)
+  clearActions() {
+    this._attack = false;
+    this._roll = false;
+    this._interact = false;
+    this._spells.fill(false);
   }
 
   consumeSpell(index) {

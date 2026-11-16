@@ -16,6 +16,21 @@ const ROLL = {
 
 const HIT_INVULN = 0.5; // segundos sin recibir daño después de un golpe
 
+// Valores base y cuánto crece cada uno por nivel (se ajustan aquí)
+const BASE_HP = 100;
+const BASE_MANA = 60;
+const GROWTH = { hp: 20, melee: 3, mana: 10, spell: 0.15 };
+
+// Estadísticas que se mejoran en el altar con almas
+export const STATS = [
+  { id: 'vigor', name: 'Vigor', label: 'Vida máxima',
+    value: (lvl) => `${BASE_HP + (lvl - 1) * GROWTH.hp}` },
+  { id: 'strength', name: 'Fuerza', label: 'Daño del golpe',
+    value: (lvl) => `${ATTACK.damage + (lvl - 1) * GROWTH.melee}` },
+  { id: 'magic', name: 'Magia', label: 'Maná / poder de hechizos',
+    value: (lvl) => `${BASE_MANA + (lvl - 1) * GROWTH.mana} / ${Math.round((1 + (lvl - 1) * GROWTH.spell) * 100)}%` },
+];
+
 export class Player {
   constructor(x, y) {
     this.x = x;
@@ -34,6 +49,11 @@ export class Player {
     this.manaRegen = 8; // maná por segundo
     this.noManaTimer = 0; // para avisar en pantalla que falta maná
     this.shieldTimer = 0;
+
+    this.levels = { vigor: 1, strength: 1, magic: 1 };
+    this.applyStats();
+    this.hp = this.maxHp;
+    this.mana = this.maxMana;
 
     this.facing = { x: 1, y: 0 };
 
@@ -149,10 +169,47 @@ export class Player {
       }
 
       if (inArc) {
-        t.takeDamage(ATTACK.damage, this.x, this.y);
+        t.takeDamage(this.meleeDamage, this.x, this.y);
         this.hitTargets.add(t);
       }
     }
+  }
+
+  // --- Mejoras del altar ---
+  applyStats() {
+    this.maxHp = BASE_HP + (this.levels.vigor - 1) * GROWTH.hp;
+    this.maxMana = BASE_MANA + (this.levels.magic - 1) * GROWTH.mana;
+  }
+
+  get meleeDamage() {
+    return ATTACK.damage + (this.levels.strength - 1) * GROWTH.melee;
+  }
+
+  get spellPower() {
+    return 1 + (this.levels.magic - 1) * GROWTH.spell;
+  }
+
+  upgradeCost(id) {
+    return 20 + (this.levels[id] - 1) * 15;
+  }
+
+  // Gasta almas para subir un nivel. Devuelve true si alcanzó.
+  upgrade(id) {
+    const cost = this.upgradeCost(id);
+    if (this.souls < cost) return false;
+
+    this.souls -= cost;
+    this.levels[id] += 1;
+    this.applyStats();
+    this.rest();
+    return true;
+  }
+
+  // Descansar en el altar: vida y maná al máximo
+  rest() {
+    this.hp = this.maxHp;
+    this.mana = this.maxMana;
+    this.shieldTimer = 0;
   }
 
   // Gasta maná si alcanza; si no, avisa y devuelve false

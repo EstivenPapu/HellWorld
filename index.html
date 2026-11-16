@@ -8,6 +8,17 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+
+  <div id="altar-menu" class="menu hidden" role="dialog" aria-label="Altar">
+    <div class="menu-box">
+      <h2>Altar</h2>
+      <p class="menu-note">Descansas: vida y maná al máximo. Los demonios regresan.</p>
+      <p class="menu-souls">Almas: <span id="menu-souls">0</span></p>
+      <div id="menu-stats"></div>
+      <button id="menu-close" class="menu-close">Salir (Esc)</button>
+    </div>
+  </div>
+
   <script type="module" src="JS/main.js"></script>
 </body>
 </html>
