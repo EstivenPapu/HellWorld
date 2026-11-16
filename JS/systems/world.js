@@ -1,10 +1,27 @@
-// El mapa del primer reino. Por ahora es un piso de cuadros y un borde,
-// lo justo para ver que la cámara se mueve.
+// El mapa del primer reino. Por ahora es un piso de cuadros, un borde
+// y una zona de daño para probar la vida y el esquive.
 export class World {
   constructor() {
     this.width = 3200;
     this.height = 3200;
     this.tile = 64;
+
+    // Zonas que hacen daño (temporal, solo para probar)
+    this.hazards = [{ x: 1300, y: 1500, w: 200, h: 200, damage: 15 }];
+  }
+
+  // Daño que recibe una entidad cuadrada si está pisando una zona de daño
+  getHazardDamage(entity) {
+    const half = entity.size / 2;
+    for (const hz of this.hazards) {
+      const overlaps =
+        entity.x + half > hz.x &&
+        entity.x - half < hz.x + hz.w &&
+        entity.y + half > hz.y &&
+        entity.y - half < hz.y + hz.h;
+      if (overlaps) return hz.damage;
+    }
+    return 0;
   }
 
   draw(ctx, camera, viewWidth, viewHeight) {
@@ -23,6 +40,12 @@ export class World {
         ctx.fillStyle = (tx + ty) % 2 === 0 ? '#1a1a24' : '#1e1e2a';
         ctx.fillRect(tx * t - camX, ty * t - camY, t, t);
       }
+    }
+
+    // Zonas de daño
+    ctx.fillStyle = 'rgba(216, 90, 30, 0.55)';
+    for (const hz of this.hazards) {
+      ctx.fillRect(hz.x - camX, hz.y - camY, hz.w, hz.h);
     }
 
     // Borde del reino
