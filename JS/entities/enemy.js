@@ -31,7 +31,7 @@ export class Enemy {
     return this.hp > 0;
   }
 
-  takeDamage(amount, fromX, fromY) {
+  takeDamage(amount, fromX, fromY, force = 260) {
     if (!this.alive) return;
 
     this.hp = Math.max(0, this.hp - amount);
@@ -41,8 +41,8 @@ export class Enemy {
     const dx = this.x - fromX;
     const dy = this.y - fromY;
     const len = Math.hypot(dx, dy) || 1;
-    this.kbx = (dx / len) * 260;
-    this.kby = (dy / len) * 260;
+    this.kbx = (dx / len) * force;
+    this.kby = (dy / len) * force;
 
     if (this.state === 'idle') this.state = 'chase';
 

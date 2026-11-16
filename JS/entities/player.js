@@ -29,6 +29,12 @@ export class Player {
 
     this.souls = 0;
 
+    this.maxMana = 60;
+    this.mana = this.maxMana;
+    this.manaRegen = 8; // maná por segundo
+    this.noManaTimer = 0; // para avisar en pantalla que falta maná
+    this.shieldTimer = 0;
+
     this.facing = { x: 1, y: 0 };
 
     this.attackTimer = 0;
@@ -72,6 +78,9 @@ export class Player {
     this.rollTimer = Math.max(0, this.rollTimer - dt);
     this.rollCooldown = Math.max(0, this.rollCooldown - dt);
     this.invulnTimer = Math.max(0, this.invulnTimer - dt);
+    this.shieldTimer = Math.max(0, this.shieldTimer - dt);
+    this.noManaTimer = Math.max(0, this.noManaTimer - dt);
+    this.mana = Math.min(this.maxMana, this.mana + this.manaRegen * dt);
 
     // Hacia dónde mira: hacia el mouse
     if (!this.isRolling) {
@@ -146,6 +155,20 @@ export class Player {
     }
   }
 
+  // Gasta maná si alcanza; si no, avisa y devuelve false
+  spendMana(cost) {
+    if (this.mana < cost) {
+      this.noManaTimer = 0.35;
+      return false;
+    }
+    this.mana -= cost;
+    return true;
+  }
+
+  activateShield(duration) {
+    this.shieldTimer = duration;
+  }
+
   addSouls(amount) {
     this.souls += amount;
   }
@@ -153,6 +176,14 @@ export class Player {
   // Devuelve true si el daño entró (no entra si está rodando o con invulnerabilidad)
   takeDamage(amount) {
     if (this.invulnerable) return false;
+
+    // El escudo absorbe el golpe completo
+    if (this.shieldTimer > 0) {
+      this.shieldTimer = 0;
+      this.invulnTimer = 0.3;
+      return false;
+    }
+
     this.hp = Math.max(0, this.hp - amount);
     this.invulnTimer = HIT_INVULN;
     return true;
@@ -168,6 +199,8 @@ export class Player {
     this.rollTimer = 0;
     this.rollCooldown = 0;
     this.invulnTimer = 0;
+    this.mana = this.maxMana;
+    this.shieldTimer = 0;
   }
 
   draw(ctx, camera) {
@@ -203,6 +236,18 @@ export class Player {
     ctx.fillStyle = this.color;
     ctx.fillRect(cx - half, cy - half, this.size, this.size);
     ctx.globalAlpha = 1;
+
+    // Escudo: parpadea cuando está por acabarse
+    if (this.shieldTimer > 0) {
+      const blink = this.shieldTimer < 1 && Math.floor(this.shieldTimer * 8) % 2 === 0;
+      if (!blink) {
+        ctx.strokeStyle = '#5fe0c0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, half + 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
     // Marca que indica hacia dónde mira
     ctx.fillStyle = '#d8344d';

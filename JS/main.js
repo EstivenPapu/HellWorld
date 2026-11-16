@@ -2,6 +2,7 @@ import { Input } from './core/input.js';
 import { Camera } from './core/camera.js';
 import { World } from './systems/world.js';
 import { Hud } from './systems/hud.js';
+import { SpellSystem } from './systems/spells.js';
 import { Player } from './entities/player.js';
 import { Enemy, separateEnemies } from './entities/enemy.js';
 import { Soul } from './entities/soul.js';
@@ -20,6 +21,7 @@ const input = new Input(canvas);
 const world = new World();
 const camera = new Camera(world.width, world.height);
 const hud = new Hud();
+const spells = new SpellSystem();
 const player = new Player(world.width / 2, world.height / 2);
 
 // Los demonios rondan la base del jefe, repartidos en círculo
@@ -50,6 +52,7 @@ function loop(now) {
 
   // 1. Actualizar
   player.update(dt, input, world, camera, enemies);
+  spells.update(dt, player, input, camera, enemies, world);
   for (const e of enemies) e.update(dt, player, world);
   separateEnemies(enemies);
 
@@ -81,8 +84,9 @@ function loop(now) {
   world.draw(ctx, camera, canvas.width, canvas.height);
   souls.forEach((s) => s.draw(ctx, camera));
   enemies.forEach((e) => e.draw(ctx, camera));
+  spells.draw(ctx, camera);
   player.draw(ctx, camera);
-  hud.draw(ctx, player, canvas.height, enemies.length);
+  hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length);
 
   requestAnimationFrame(loop);
 }
