@@ -27,6 +27,8 @@ export class Player {
     this.maxHp = 100;
     this.hp = this.maxHp;
 
+    this.souls = 0;
+
     this.facing = { x: 1, y: 0 };
 
     this.attackTimer = 0;
@@ -138,10 +140,14 @@ export class Player {
       }
 
       if (inArc) {
-        t.takeDamage(ATTACK.damage);
+        t.takeDamage(ATTACK.damage, this.x, this.y);
         this.hitTargets.add(t);
       }
     }
+  }
+
+  addSouls(amount) {
+    this.souls += amount;
   }
 
   // Devuelve true si el daño entró (no entra si está rodando o con invulnerabilidad)

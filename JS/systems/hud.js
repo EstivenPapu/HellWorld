@@ -1,6 +1,6 @@
-// Lo que se dibuja encima de todo: vida, esquive y ayuda de controles.
+// Lo que se dibuja encima de todo: vida, esquive, almas y ayuda de controles.
 export class Hud {
-  draw(ctx, player, viewHeight) {
+  draw(ctx, player, viewHeight, enemiesLeft) {
     const x = 20;
     const y = 20;
     const w = 240;
@@ -21,9 +21,18 @@ export class Hud {
     ctx.fillStyle = ready >= 1 ? '#5fb3ff' : '#2f6a9e';
     ctx.fillRect(x, y + h + 8, w * ready, 6);
 
+    // Almas
+    ctx.fillStyle = '#8fd8ff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`Almas: ${player.souls}`, x, y + h + 40);
+
+    // Demonios que quedan
+    ctx.fillStyle = 'rgba(232, 232, 240, 0.8)';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(`Demonios: ${enemiesLeft}`, x, y + h + 62);
+
     // Ayuda temporal de controles
     ctx.fillStyle = 'rgba(232, 232, 240, 0.6)';
-    ctx.font = '14px sans-serif';
     ctx.fillText('WASD mover · Clic izquierdo atacar · Espacio rodar', x, viewHeight - 20);
   }
 }
