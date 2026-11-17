@@ -6,6 +6,7 @@ import { SpellSystem } from './systems/spells.js';
 import { AltarMenu } from './systems/altar-menu.js';
 import { Player } from './entities/player.js';
 import { Enemy, separateEnemies } from './entities/enemy.js';
+import { Boss } from './entities/boss.js';
 import { Soul } from './entities/soul.js';
 import { Altar } from './entities/altar.js';
 import { LostSouls } from './entities/lostsouls.js';
@@ -31,12 +32,12 @@ const altar = new Altar(1600, 1440);
 const spawn = { x: altar.x, y: altar.y + 80 };
 const player = new Player(spawn.x, spawn.y);
 
-// Los demonios rondan la base del jefe, repartidos en círculo
+// Los demonios rondan la base del jefe, repartidos en círculo a su alrededor
 function spawnEnemies(base, count) {
   const list = [];
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + 0.3;
-    const distance = base.radius + 160;
+    const distance = base.radius + 330;
     list.push(
       new Enemy(
         base.x + Math.cos(angle) * distance,
@@ -48,11 +49,17 @@ function spawnEnemies(base, count) {
 }
 
 const enemies = [];
-function resetEnemies() {
+let boss = null;
+let bossDefeated = false; // el jefe derrotado ya no vuelve
+let victoryTimer = 0;
+
+// Devuelve a su lugar a los demonios y al jefe (si sigue vivo)
+function resetEncounters() {
   enemies.length = 0;
   enemies.push(...spawnEnemies(world.bossBase, 5));
+  boss = bossDefeated ? null : new Boss(world.bossBase.x, world.bossBase.y);
 }
-resetEnemies();
+resetEncounters();
 
 const souls = [];     // almas sueltas por los demonios
 let lostSouls = null; // las almas que perdiste al morir
@@ -61,15 +68,16 @@ let lostSouls = null; // las almas que perdiste al morir
 let state = 'playing';
 let deathTimer = 0;
 const DEATH_TIME = 2.4;
+const VICTORY_TIME = 4;
 
 const menu = new AltarMenu(player, () => {
   state = 'playing';
 });
 
-// Descansar en el altar: cura, devuelve a los demonios y abre el menú
+// Descansar en el altar: cura, devuelve a los enemigos y abre el menú
 function openAltar() {
   player.rest();
-  resetEnemies();
+  resetEncounters();
   souls.length = 0;
   spells.reset();
   state = 'altar';
@@ -88,10 +96,18 @@ function startDeath() {
 
 function respawnAtAltar() {
   player.respawn(spawn.x, spawn.y);
-  resetEnemies();
+  resetEncounters();
   souls.length = 0;
   spells.reset();
   state = 'playing';
+}
+
+function onBossDefeated() {
+  // 5 esferas de 30 almas = 150
+  for (let i = 0; i < 5; i++) souls.push(new Soul(boss.x, boss.y, boss.souls / 5));
+  boss = null;
+  bossDefeated = true;
+  victoryTimer = VICTORY_TIME;
 }
 
 function updatePlaying(dt, wantsInteract) {
@@ -100,10 +116,18 @@ function updatePlaying(dt, wantsInteract) {
     return;
   }
 
-  player.update(dt, input, world, camera, enemies);
-  spells.update(dt, player, input, camera, enemies, world);
+  // Todo lo que se puede golpear: demonios y jefe
+  const targets = boss ? [...enemies, boss] : enemies;
+
+  player.update(dt, input, world, camera, targets);
+  spells.update(dt, player, input, camera, targets, world);
   for (const e of enemies) e.update(dt, player, world);
   separateEnemies(enemies);
+
+  if (boss) {
+    boss.update(dt, player, world);
+    if (!boss.alive) onBossDefeated();
+  }
 
   // Los demonios derrotados sueltan almas
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -146,6 +170,15 @@ function drawDeathOverlay() {
   ctx.textAlign = 'left';
 }
 
+function drawVictory() {
+  const alpha = Math.min(1, victoryTimer); // se desvanece el último segundo
+  ctx.fillStyle = `rgba(255, 210, 122, ${alpha})`;
+  ctx.font = 'bold 44px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('DEMONIO DERROTADO', canvas.width / 2, canvas.height / 2 - 70);
+  ctx.textAlign = 'left';
+}
+
 let last = performance.now();
 
 function loop(now) {
@@ -154,6 +187,7 @@ function loop(now) {
   last = now;
 
   const wantsInteract = input.consumeInteract();
+  victoryTimer = Math.max(0, victoryTimer - dt);
 
   // 1. Actualizar
   if (state === 'playing') {
@@ -177,9 +211,11 @@ function loop(now) {
   if (lostSouls) lostSouls.draw(ctx, camera);
   souls.forEach((s) => s.draw(ctx, camera));
   enemies.forEach((e) => e.draw(ctx, camera));
+  if (boss) boss.draw(ctx, camera);
   spells.draw(ctx, camera);
   player.draw(ctx, camera);
-  hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length);
+  hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length, boss);
+  if (victoryTimer > 0) drawVictory();
   if (state === 'dead') drawDeathOverlay();
 
   requestAnimationFrame(loop);

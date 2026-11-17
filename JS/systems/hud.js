@@ -2,7 +2,7 @@ import { SPELLS } from './spells.js';
 
 // Lo que se dibuja encima de todo: vida, esquive, maná, hechizos, almas y ayuda.
 export class Hud {
-  draw(ctx, player, spells, viewWidth, viewHeight, enemiesLeft) {
+  draw(ctx, player, spells, viewWidth, viewHeight, enemiesLeft, boss) {
     const x = 20;
     const y = 20;
     const w = 240;
@@ -48,12 +48,34 @@ export class Hud {
 
     this.drawSpellSlots(ctx, player, spells, viewWidth, viewHeight);
 
+    if (boss && boss.engaged) this.drawBossBar(ctx, boss, viewWidth);
+
     // Ayuda temporal de controles, arriba a la derecha
     ctx.fillStyle = 'rgba(232, 232, 240, 0.6)';
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('WASD mover · Clic izq. atacar · Espacio rodar', viewWidth - 20, 30);
     ctx.fillText('Clic der. Llama · Q Nova · E Escudo', viewWidth - 20, 52);
+    ctx.textAlign = 'left';
+  }
+
+  // Barra de vida del jefe, arriba al centro
+  drawBossBar(ctx, boss, viewWidth) {
+    const w = Math.min(520, viewWidth - 80);
+    const x = (viewWidth - w) / 2;
+    const y = 44;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(x - 3, y - 3, w + 6, 20);
+    ctx.fillStyle = '#2a0f14';
+    ctx.fillRect(x, y, w, 14);
+    ctx.fillStyle = '#d8344d';
+    ctx.fillRect(x, y, w * (boss.hp / boss.maxHp), 14);
+
+    ctx.fillStyle = '#e8e8f0';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(boss.name, viewWidth / 2, y - 10);
     ctx.textAlign = 'left';
   }
 
