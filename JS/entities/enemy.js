@@ -1,3 +1,5 @@
+import { sfx } from '../core/audio.js';
+
 // Demonio menor: se queda quieto hasta que te ve, te persigue y te ataca
 // con un aviso. Si lo golpeas mientras prepara el ataque, se lo interrumpes.
 // Estados: idle -> chase -> windup (aviso) -> recover (descanso) -> chase
@@ -36,6 +38,7 @@ export class Enemy {
 
     this.hp = Math.max(0, this.hp - amount);
     this.hitFlash = 0.12;
+    sfx(this.alive ? 'hit' : 'enemyDie');
 
     // Empuje en dirección contraria a quien golpeó
     const dx = this.x - fromX;

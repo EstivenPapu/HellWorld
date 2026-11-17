@@ -2,6 +2,19 @@ import { SPELLS } from './spells.js';
 
 // Lo que se dibuja encima de todo: vida, esquive, maná, hechizos, almas y ayuda.
 export class Hud {
+  constructor() {
+    this.touch = false;     // en celular se esconde la ayuda de teclas y los espacios
+    this.objective = '';    // texto de la misión activa
+    this.toast = '';
+    this.toastUntil = 0;
+  }
+
+  // Aviso corto en pantalla (3 segundos)
+  notify(text) {
+    this.toast = text;
+    this.toastUntil = performance.now() + 3000;
+  }
+
   draw(ctx, player, spells, viewWidth, viewHeight, enemiesLeft, boss) {
     const x = 20;
     const y = 20;
@@ -46,16 +59,40 @@ export class Hud {
     ctx.font = '14px sans-serif';
     ctx.fillText(`Demonios: ${enemiesLeft}`, x, manaY + manaH + 50);
 
-    this.drawSpellSlots(ctx, player, spells, viewWidth, viewHeight);
+    // Misión activa
+    if (this.objective) {
+      ctx.fillStyle = '#ffd27a';
+      ctx.fillText(this.objective, x, manaY + manaH + 72);
+    }
+
+    if (!this.touch) this.drawSpellSlots(ctx, player, spells, viewWidth, viewHeight);
 
     if (boss && boss.engaged) this.drawBossBar(ctx, boss, viewWidth);
+    this.drawToast(ctx, viewWidth);
+
+    // En el celular no se muestra la ayuda de teclas
+    if (this.touch) return;
 
     // Ayuda temporal de controles, arriba a la derecha
     ctx.fillStyle = 'rgba(232, 232, 240, 0.6)';
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('WASD mover · Clic izq. atacar · Espacio rodar', viewWidth - 20, 30);
-    ctx.fillText('Clic der. Llama · Q Nova · E Escudo', viewWidth - 20, 52);
+    ctx.fillText('Clic der. Llama · Q Nova · E Escudo · F usar · M sonido', viewWidth - 20, 52);
+    ctx.textAlign = 'left';
+  }
+
+  // Aviso temporal, arriba al centro
+  drawToast(ctx, viewWidth) {
+    if (performance.now() > this.toastUntil) return;
+
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    const w = ctx.measureText(this.toast).width + 28;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect((viewWidth - w) / 2, 90, w, 32);
+    ctx.fillStyle = '#ffd27a';
+    ctx.fillText(this.toast, viewWidth / 2, 112);
     ctx.textAlign = 'left';
   }
 

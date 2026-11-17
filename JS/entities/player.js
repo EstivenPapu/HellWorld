@@ -1,3 +1,5 @@
+import { sfx } from '../core/audio.js';
+
 // Números del combate: cámbialos aquí para ajustar cómo se siente.
 const ATTACK = {
   duration: 0.18,   // segundos que dura el golpe
@@ -15,6 +17,7 @@ const ROLL = {
 };
 
 const HIT_INVULN = 0.5; // segundos sin recibir daño después de un golpe
+const AUTO_AIM_RANGE = 380; // en el celular apunta solo a lo que esté a esta distancia
 
 // Valores base y cuánto crece cada uno por nivel (se ajustan aquí)
 const BASE_HP = 100;
@@ -103,7 +106,9 @@ export class Player {
     this.mana = Math.min(this.maxMana, this.mana + this.manaRegen * dt);
 
     // Hacia dónde mira: hacia el mouse
-    if (!this.isRolling) {
+    if (!this.isRolling && input.isTouch) {
+      this.aimForTouch(move, targets);
+    } else if (!this.isRolling) {
       const aim = input.getAimWorld(camera);
       const dx = aim.x - this.x;
       const dy = aim.y - this.y;
@@ -114,10 +119,12 @@ export class Player {
     // Rodar
     if (wantsRoll && this.rollCooldown <= 0 && !this.isRolling) {
       const dir = move.x !== 0 || move.y !== 0 ? move : this.facing;
-      this.rollDir = { x: dir.x, y: dir.y };
+      const dirLength = Math.hypot(dir.x, dir.y) || 1;
+      this.rollDir = { x: dir.x / dirLength, y: dir.y / dirLength };
       this.rollTimer = ROLL.duration;
       this.rollCooldown = ROLL.cooldown;
       this.attackTimer = 0; // rodar cancela el ataque
+      sfx('roll');
     }
 
     // Atacar
@@ -126,6 +133,7 @@ export class Player {
       this.attackCooldown = ATTACK.cooldown;
       this.attackAngle = Math.atan2(this.facing.y, this.facing.x);
       this.hitTargets.clear();
+      sfx('attack');
     }
 
     // Movimiento
@@ -148,6 +156,28 @@ export class Player {
     this.y = Math.min(Math.max(this.y, half), world.height - half);
 
     if (this.isAttacking) this.applyAttack(targets);
+  }
+
+  // En el celular no hay mouse: apunta al demonio más cercano o hacia donde caminas
+  aimForTouch(move, targets) {
+    let nearest = null;
+    let best = AUTO_AIM_RANGE;
+    for (const t of targets) {
+      if (!t.alive) continue;
+      const d = Math.hypot(t.x - this.x, t.y - this.y);
+      if (d < best) {
+        best = d;
+        nearest = t;
+      }
+    }
+
+    if (nearest) {
+      const len = Math.hypot(nearest.x - this.x, nearest.y - this.y) || 1;
+      this.facing = { x: (nearest.x - this.x) / len, y: (nearest.y - this.y) / len };
+    } else if (move.x !== 0 || move.y !== 0) {
+      const len = Math.hypot(move.x, move.y);
+      this.facing = { x: move.x / len, y: move.y / len };
+    }
   }
 
   // Golpea a todos los objetivos dentro del arco, una sola vez por golpe
@@ -189,6 +219,27 @@ export class Player {
     return 1 + (this.levels.magic - 1) * GROWTH.spell;
   }
 
+  // Datos que se guardan en el navegador
+  serialize() {
+    return { levels: { ...this.levels }, souls: this.souls };
+  }
+
+  // Carga datos guardados, revisando que sean números válidos
+  loadState(data) {
+    if (!data) return;
+
+    for (const id of Object.keys(this.levels)) {
+      const level = Math.floor(Number(data.levels && data.levels[id]));
+      if (Number.isFinite(level) && level >= 1 && level <= 99) this.levels[id] = level;
+    }
+
+    const souls = Math.floor(Number(data.souls));
+    if (Number.isFinite(souls) && souls >= 0) this.souls = souls;
+
+    this.applyStats();
+    this.rest();
+  }
+
   upgradeCost(id) {
     return 20 + (this.levels[id] - 1) * 15;
   }
@@ -202,6 +253,7 @@ export class Player {
     this.levels[id] += 1;
     this.applyStats();
     this.rest();
+    sfx('upgrade');
     return true;
   }
 
@@ -216,6 +268,7 @@ export class Player {
   spendMana(cost) {
     if (this.mana < cost) {
       this.noManaTimer = 0.35;
+      sfx('nomana');
       return false;
     }
     this.mana -= cost;
@@ -224,10 +277,12 @@ export class Player {
 
   activateShield(duration) {
     this.shieldTimer = duration;
+    sfx('shield');
   }
 
   addSouls(amount) {
     this.souls += amount;
+    sfx('soul');
   }
 
   // Devuelve true si el daño entró (no entra si está rodando o con invulnerabilidad)
@@ -238,11 +293,13 @@ export class Player {
     if (this.shieldTimer > 0) {
       this.shieldTimer = 0;
       this.invulnTimer = 0.3;
+      sfx('shieldBreak');
       return false;
     }
 
     this.hp = Math.max(0, this.hp - amount);
     this.invulnTimer = HIT_INVULN;
+    sfx('hurt');
     return true;
   }
 

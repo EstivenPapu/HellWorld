@@ -1,4 +1,5 @@
 import { BossOrb } from './bossorb.js';
+import { sfx } from '../core/audio.js';
 
 // Los ataques del jefe. Todos avisan antes de golpear. Ajusta los números aquí.
 const ATTACKS = {
@@ -59,6 +60,7 @@ export class Boss {
 
     this.hp = Math.max(0, this.hp - amount);
     this.hitFlash = 0.1;
+    sfx('bossHit');
     if (this.state === 'idle') this.state = 'chase';
 
     // Casi no se mueve al golpearlo y nunca se le interrumpe un ataque
@@ -139,6 +141,7 @@ export class Boss {
     this.lastAttack = this.attack;
     this.state = 'windup';
     this.stateTimer = ATTACKS[this.attack].windup;
+    sfx('warn');
 
     // La embestida queda apuntada hacia donde estabas al empezar el aviso
     const len = Math.hypot(dx, dy) || 1;
@@ -152,6 +155,7 @@ export class Boss {
         const d = Math.hypot(player.x - this.x, player.y - this.y);
         if (d <= a.radius) player.takeDamage(a.damage); // rodando no te hace nada
         this.shockTimer = SHOCK_TIME;
+        sfx('slam');
         this.enterRecover();
         break;
       }
@@ -159,12 +163,14 @@ export class Boss {
       case 'charge':
         this.state = 'attack';
         this.stateTimer = ATTACKS.charge.duration;
+        sfx('charge');
         this.chargeHit = false;
         break;
 
       case 'orbs': {
         const a = ATTACKS.orbs;
         const base = Math.atan2(player.y - this.y, player.x - this.x);
+        sfx('orbs');
         for (let i = 0; i < a.count; i++) {
           const angle = base + (i - (a.count - 1) / 2) * a.spread;
           this.orbs.push(

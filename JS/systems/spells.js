@@ -1,4 +1,5 @@
 import { Projectile } from '../entities/projectile.js';
+import { sfx } from '../core/audio.js';
 
 // Los 3 hechizos de la 0.1. Los números se ajustan aquí.
 export const SPELLS = [
@@ -54,6 +55,7 @@ export class SpellSystem {
   cast(index, player, enemies) {
     switch (SPELLS[index].id) {
       case 'flame':
+        sfx('flame');
         this.projectiles.push(
           new Projectile(player.x, player.y, player.facing.x, player.facing.y, {
             ...FLAME,
@@ -63,6 +65,7 @@ export class SpellSystem {
         break;
 
       case 'nova':
+        sfx('nova');
         for (const e of enemies) {
           if (!e.alive) continue;
           const dist = Math.hypot(e.x - player.x, e.y - player.y);

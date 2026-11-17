@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Hellworld</title>
   <link rel="stylesheet" href="CSS/style.css">
 </head>
@@ -15,7 +15,19 @@
       <p class="menu-note">Descansas: vida y maná al máximo. Los demonios regresan.</p>
       <p class="menu-souls">Almas: <span id="menu-souls">0</span></p>
       <div id="menu-stats"></div>
+      <div class="menu-extra">
+        <button id="menu-sound">Sonido: activado</button>
+        <button id="menu-reset">Nueva partida</button>
+      </div>
       <button id="menu-close" class="menu-close">Salir (Esc)</button>
+    </div>
+  </div>
+
+  <div id="dialog" class="menu hidden" role="dialog" aria-label="Diálogo">
+    <div class="menu-box">
+      <h2 id="dialog-name"></h2>
+      <p id="dialog-text" class="dialog-text"></p>
+      <button id="dialog-ok" class="menu-close"></button>
     </div>
   </div>
 

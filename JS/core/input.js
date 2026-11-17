@@ -1,6 +1,6 @@
 // Lee los controles y los traduce a órdenes simples para el juego.
-// Más adelante el joystick y los botones del celular llenarán estos mismos
-// datos (movimiento, ataque, rodar, hechizos), así el resto del juego no se
+// El teclado y el mouse llenan estos datos; en el celular los llenan el
+// joystick y los botones de touch-controls.js. Así el resto del juego no se
 // entera de qué control se usa.
 export class Input {
   constructor(canvas) {
@@ -10,6 +10,14 @@ export class Input {
     this._roll = false;
     this._spells = [false, false, false]; // 0: Llama, 1: Nova, 2: Escudo
     this._interact = false;
+
+    // Celular: la perilla del joystick escribe aquí
+    const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+    this.isTouch = Boolean(coarse && coarse.matches);
+    this.touchMove = { x: 0, y: 0 };
+    window.addEventListener('touchstart', () => {
+      this.isTouch = true;
+    }, { passive: true });
 
     window.addEventListener('keydown', (e) => {
       if (!e.repeat) {
@@ -26,11 +34,14 @@ export class Input {
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
 
+    // En pantallas táctiles el navegador inventa eventos de mouse: se ignoran
     canvas.addEventListener('mousemove', (e) => {
+      if (this.isTouch) return;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
     });
     canvas.addEventListener('mousedown', (e) => {
+      if (this.isTouch) return;
       if (e.button === 0) this._attack = true;
       if (e.button === 2) this._spells[0] = true;
     });
@@ -38,6 +49,11 @@ export class Input {
   }
 
   getMove() {
+    // El joystick manda si se está usando
+    if (this.isTouch && (this.touchMove.x !== 0 || this.touchMove.y !== 0)) {
+      return { x: this.touchMove.x, y: this.touchMove.y };
+    }
+
     let x = 0;
     let y = 0;
 
@@ -59,6 +75,23 @@ export class Input {
   // Posición del mouse dentro del mundo (no de la pantalla)
   getAimWorld(camera) {
     return { x: this.mouse.x + camera.x, y: this.mouse.y + camera.y };
+  }
+
+  // Botones de la pantalla táctil
+  pressAttack() {
+    this._attack = true;
+  }
+
+  pressRoll() {
+    this._roll = true;
+  }
+
+  pressSpell(index) {
+    this._spells[index] = true;
+  }
+
+  pressInteract() {
+    this._interact = true;
   }
 
   // Devuelven true una sola vez por cada pulsación

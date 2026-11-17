@@ -10,7 +10,7 @@ export class Altar {
     return Math.hypot(player.x - this.x, player.y - this.y) <= this.interactRange;
   }
 
-  draw(ctx, camera, showPrompt) {
+  draw(ctx, camera, showPrompt, touch = false) {
     const cx = Math.round(this.x - camera.x);
     const cy = Math.round(this.y - camera.y);
 
@@ -39,7 +39,7 @@ export class Altar {
     ctx.fill();
 
     if (showPrompt) {
-      const text = 'F · Descansar y mejorar';
+      const text = touch ? 'Descansar y mejorar' : 'F · Descansar y mejorar';
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       const w = ctx.measureText(text).width + 20;

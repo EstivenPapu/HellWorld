@@ -1,14 +1,21 @@
 import { Input } from './core/input.js';
 import { Camera } from './core/camera.js';
+import { audio, sfx } from './core/audio.js';
 import { World } from './systems/world.js';
 import { Hud } from './systems/hud.js';
 import { SpellSystem } from './systems/spells.js';
 import { AltarMenu } from './systems/altar-menu.js';
+import { TouchControls } from './systems/touch-controls.js';
+import { Dialog } from './systems/dialog.js';
+import { Quest, QUEST } from './systems/quest.js';
+import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { Player } from './entities/player.js';
 import { Enemy, separateEnemies } from './entities/enemy.js';
 import { Boss } from './entities/boss.js';
 import { Soul } from './entities/soul.js';
 import { Altar } from './entities/altar.js';
+import { Npc } from './entities/npc.js';
+import { Relic } from './entities/relic.js';
 import { LostSouls } from './entities/lostsouls.js';
 
 const canvas = document.getElementById('game');
@@ -22,16 +29,70 @@ window.addEventListener('resize', resize);
 resize();
 
 const input = new Input(canvas);
+const touch = new TouchControls(input);
 const world = new World();
 const camera = new Camera(world.width, world.height);
 const hud = new Hud();
 const spells = new SpellSystem();
 
-// El altar es el punto de inicio y de reaparición
+// El altar es el punto de inicio y de reaparición; el Peregrino vive cerca
 const altar = new Altar(1600, 1440);
+const npc = new Npc(1780, 1470, 'Peregrino');
 const spawn = { x: altar.x, y: altar.y + 80 };
 const player = new Player(spawn.x, spawn.y);
+const quest = new Quest();
 
+const enemies = [];
+const souls = [];      // almas sueltas por los demonios
+let boss = null;
+let bossDefeated = false; // el jefe derrotado ya no vuelve
+let relic = null;      // la reliquia de la misión (solo existe con la misión activa)
+let lostSouls = null;  // las almas que perdiste al morir
+
+// Estados del juego: 'playing', 'dead', 'altar' (menú) o 'dialog'
+let state = 'playing';
+let deathTimer = 0;
+let victoryTimer = 0;
+let autosaveTimer = 0;
+let resetting = false; // true mientras se borra la partida, para no volver a guardar
+
+const DEATH_TIME = 2.4;
+const VICTORY_TIME = 4;
+const AUTOSAVE_EVERY = 5; // segundos
+
+// ---------- Guardado ----------
+function saveGame() {
+  if (resetting) return;
+  writeSave({
+    player: player.serialize(),
+    bossDefeated,
+    quest: quest.serialize(),
+    lostSouls: lostSouls
+      ? { x: lostSouls.x, y: lostSouls.y, amount: lostSouls.amount }
+      : null,
+    muted: audio.muted,
+  });
+}
+
+const saved = loadSave();
+if (saved) {
+  player.loadState(saved.player);
+  bossDefeated = Boolean(saved.bossDefeated);
+  quest.load(saved.quest);
+  audio.setMuted(saved.muted);
+
+  const ls = saved.lostSouls;
+  if (ls && [ls.x, ls.y, ls.amount].every(Number.isFinite) && ls.amount > 0) {
+    lostSouls = new LostSouls(ls.x, ls.y, Math.floor(ls.amount));
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveGame();
+});
+window.addEventListener('pagehide', saveGame);
+
+// ---------- Enemigos ----------
 // Los demonios rondan la base del jefe, repartidos en círculo a su alrededor
 function spawnEnemies(base, count) {
   const list = [];
@@ -48,11 +109,6 @@ function spawnEnemies(base, count) {
   return list;
 }
 
-const enemies = [];
-let boss = null;
-let bossDefeated = false; // el jefe derrotado ya no vuelve
-let victoryTimer = 0;
-
 // Devuelve a su lugar a los demonios y al jefe (si sigue vivo)
 function resetEncounters() {
   enemies.length = 0;
@@ -61,17 +117,22 @@ function resetEncounters() {
 }
 resetEncounters();
 
-const souls = [];     // almas sueltas por los demonios
-let lostSouls = null; // las almas que perdiste al morir
-
-// Estados del juego: 'playing', 'dead' o 'altar' (menú abierto)
-let state = 'playing';
-let deathTimer = 0;
-const DEATH_TIME = 2.4;
-const VICTORY_TIME = 4;
-
-const menu = new AltarMenu(player, () => {
+// ---------- Menús ----------
+const dialog = new Dialog(() => {
   state = 'playing';
+});
+
+const menu = new AltarMenu(player, {
+  onClose: () => {
+    state = 'playing';
+    saveGame();
+  },
+  onChange: saveGame,
+  onReset: () => {
+    resetting = true;
+    clearSave();
+    location.reload();
+  },
 });
 
 // Descansar en el altar: cura, devuelve a los enemigos y abre el menú
@@ -81,9 +142,32 @@ function openAltar() {
   souls.length = 0;
   spells.reset();
   state = 'altar';
+  sfx('altar');
   menu.open();
+  saveGame();
 }
 
+function openNpcDialog() {
+  const d = quest.dialog();
+  state = 'dialog';
+
+  dialog.open(npc.name, d.text, d.button, () => {
+    if (d.action === 'accept') {
+      quest.accept();
+      hud.notify(`Misión aceptada: ${QUEST.name}`);
+      sfx('quest');
+    }
+    if (d.action === 'reward') {
+      quest.complete();
+      player.addSouls(QUEST.reward);
+      hud.notify(`Misión completada: +${QUEST.reward} almas`);
+      sfx('questDone');
+    }
+    saveGame();
+  });
+}
+
+// ---------- Muerte y victoria ----------
 // Al morir, las almas se quedan donde caíste
 function startDeath() {
   if (player.souls > 0) {
@@ -92,6 +176,8 @@ function startDeath() {
   }
   state = 'dead';
   deathTimer = DEATH_TIME;
+  sfx('death');
+  saveGame();
 }
 
 function respawnAtAltar() {
@@ -108,11 +194,32 @@ function onBossDefeated() {
   boss = null;
   bossDefeated = true;
   victoryTimer = VICTORY_TIME;
+  sfx('victory');
+  saveGame();
 }
 
-function updatePlaying(dt, wantsInteract) {
-  if (wantsInteract && altar.isNear(player)) {
+// ---------- Interacción ----------
+// Qué hay cerca para usar con F (o con el botón en el celular)
+function nearestInteractable() {
+  const dAltar = altar.isNear(player)
+    ? Math.hypot(player.x - altar.x, player.y - altar.y)
+    : Infinity;
+  const dNpc = npc.isNear(player)
+    ? Math.hypot(player.x - npc.x, player.y - npc.y)
+    : Infinity;
+
+  if (dAltar === Infinity && dNpc === Infinity) return null;
+  return dAltar <= dNpc ? 'altar' : 'npc';
+}
+
+// ---------- Actualizar ----------
+function updatePlaying(dt, wantsInteract, interactable) {
+  if (wantsInteract && interactable === 'altar') {
     openAltar();
+    return;
+  }
+  if (wantsInteract && interactable === 'npc') {
+    openNpcDialog();
     return;
   }
 
@@ -150,12 +257,27 @@ function updatePlaying(dt, wantsInteract) {
     if (lostSouls.collected) lostSouls = null;
   }
 
+  // La reliquia solo existe mientras la misión está activa
+  if (quest.state === 'active' && !relic) relic = new Relic(QUEST.relic.x, QUEST.relic.y);
+  if (quest.state !== 'active') relic = null;
+  if (relic) {
+    relic.update(dt, player);
+    if (relic.collected) {
+      quest.collect();
+      relic = null;
+      hud.notify('Reliquia recogida: vuelve con el Peregrino');
+      sfx('quest');
+      saveGame();
+    }
+  }
+
   const hazardDamage = world.getHazardDamage(player);
   if (hazardDamage > 0) player.takeDamage(hazardDamage);
 
   if (player.hp <= 0) startDeath();
 }
 
+// ---------- Dibujar ----------
 function drawDeathOverlay() {
   const elapsed = DEATH_TIME - deathTimer;
   const fade = Math.min(1, elapsed / 0.8);
@@ -189,25 +311,40 @@ function loop(now) {
   const wantsInteract = input.consumeInteract();
   victoryTimer = Math.max(0, victoryTimer - dt);
 
+  const interactable = state === 'playing' ? nearestInteractable() : null;
+
   // 1. Actualizar
   if (state === 'playing') {
-    updatePlaying(dt, wantsInteract);
+    updatePlaying(dt, wantsInteract, interactable);
+
+    autosaveTimer += dt;
+    if (autosaveTimer >= AUTOSAVE_EVERY) {
+      autosaveTimer = 0;
+      saveGame();
+    }
   } else {
     // En pausa las teclas no se guardan para después
     input.clearActions();
     if (state === 'altar' && wantsInteract) menu.close();
+    if (state === 'dialog' && wantsInteract) dialog.confirm();
     if (state === 'dead') {
       deathTimer -= dt;
       if (deathTimer <= 0) respawnAtAltar();
     }
   }
 
+  audio.setIntensity(state === 'playing' && boss && boss.engaged ? 1 : 0);
   camera.follow(player, canvas.width, canvas.height);
 
   // 2. Dibujar
+  hud.touch = input.isTouch;
+  hud.objective = quest.objective;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   world.draw(ctx, camera, canvas.width, canvas.height);
-  altar.draw(ctx, camera, state === 'playing' && altar.isNear(player));
+  altar.draw(ctx, camera, interactable === 'altar', input.isTouch);
+  npc.draw(ctx, camera, interactable === 'npc', quest.state, input.isTouch);
+  if (relic) relic.draw(ctx, camera);
   if (lostSouls) lostSouls.draw(ctx, camera);
   souls.forEach((s) => s.draw(ctx, camera));
   enemies.forEach((e) => e.draw(ctx, camera));
@@ -217,6 +354,12 @@ function loop(now) {
   hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length, boss);
   if (victoryTimer > 0) drawVictory();
   if (state === 'dead') drawDeathOverlay();
+
+  touch.update({
+    player,
+    spells,
+    interactLabel: interactable === 'altar' ? 'Altar' : interactable === 'npc' ? 'Hablar' : '',
+  });
 
   requestAnimationFrame(loop);
 }
