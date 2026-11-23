@@ -1,3 +1,5 @@
+import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
+
 // Personaje con el que se puede hablar. Muestra "!" si tiene una misión
 // para ti y "?" si ya puedes entregarla.
 export class Npc {
@@ -16,17 +18,22 @@ export class Npc {
     const cx = Math.round(this.x - camera.x);
     const cy = Math.round(this.y - camera.y);
 
-    // Capucha y cuerpo
-    ctx.fillStyle = '#8a7a4a';
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, cy - 8);
-    ctx.lineTo(cx, cy - 30);
-    ctx.lineTo(cx + 14, cy - 8);
-    ctx.fill();
-    ctx.fillStyle = '#c9b27a';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 16, 0, Math.PI * 2);
-    ctx.fill();
+    if (hasSprite('npc')) {
+      drawShadow(ctx, cx, cy + 14, 13, 4);
+      drawFrame(ctx, 'npc', Math.floor(performance.now() / 600) % 2, 0, cx, cy);
+    } else {
+      // Sin sprites: capucha y cuerpo simples
+      ctx.fillStyle = '#8a7a4a';
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, cy - 8);
+      ctx.lineTo(cx, cy - 30);
+      ctx.lineTo(cx + 14, cy - 8);
+      ctx.fill();
+      ctx.fillStyle = '#c9b27a';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Marca de misión
     const mark = questState === 'available' ? '!' : questState === 'ready' ? '?' : '';

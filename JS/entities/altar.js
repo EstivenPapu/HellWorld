@@ -1,3 +1,5 @@
+import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
+
 // Altar del reino: aquí reapareces al morir y gastas las almas.
 export class Altar {
   constructor(x, y) {
@@ -21,22 +23,26 @@ export class Altar {
     ctx.arc(cx, cy, this.interactRange, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Piedra
-    ctx.fillStyle = '#2a2a38';
-    ctx.fillRect(cx - 26, cy - 26, 52, 52);
-    ctx.strokeStyle = '#8fd8ff';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(cx - 26, cy - 26, 52, 52);
+    if (hasSprite('altar')) {
+      drawShadow(ctx, cx, cy + 19, 24, 6);
+      drawFrame(ctx, 'altar', Math.floor(performance.now() / 700) % 2, 0, cx, cy);
+    } else {
+      // Sin sprites: piedra y cristal simples
+      ctx.fillStyle = '#2a2a38';
+      ctx.fillRect(cx - 26, cy - 26, 52, 52);
+      ctx.strokeStyle = '#8fd8ff';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(cx - 26, cy - 26, 52, 52);
 
-    // Cristal
-    ctx.fillStyle = '#8fd8ff';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 14);
-    ctx.lineTo(cx + 10, cy);
-    ctx.lineTo(cx, cy + 14);
-    ctx.lineTo(cx - 10, cy);
-    ctx.closePath();
-    ctx.fill();
+      ctx.fillStyle = '#8fd8ff';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 14);
+      ctx.lineTo(cx + 10, cy);
+      ctx.lineTo(cx, cy + 14);
+      ctx.lineTo(cx - 10, cy);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     if (showPrompt) {
       const text = touch ? 'Descansar y mejorar' : 'F · Descansar y mejorar';

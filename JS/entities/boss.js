@@ -1,5 +1,6 @@
 import { BossOrb } from './bossorb.js';
 import { sfx } from '../core/audio.js';
+import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
 
 // Los ataques del jefe. Todos avisan antes de golpear. Ajusta los números aquí.
 const ATTACKS = {
@@ -44,6 +45,7 @@ export class Boss {
     this.hitFlash = 0;
     this.shockTimer = 0;
     this.orbs = [];
+    this.animTime = 0;
   }
 
   get alive() {
@@ -77,6 +79,7 @@ export class Boss {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.shockTimer = Math.max(0, this.shockTimer - dt);
     this.stateTimer -= dt;
+    this.animTime += dt;
 
     for (const orb of this.orbs) orb.update(dt, player, world);
     this.orbs = this.orbs.filter((o) => o.alive);
@@ -239,34 +242,47 @@ export class Boss {
       ctx.stroke();
     }
 
-    // Cuernos
-    ctx.fillStyle = '#3a0a14';
-    ctx.beginPath();
-    ctx.moveTo(cx - 30, cy - 18);
-    ctx.lineTo(cx - 20, cy - 58);
-    ctx.lineTo(cx - 6, cy - 32);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + 30, cy - 18);
-    ctx.lineTo(cx + 20, cy - 58);
-    ctx.lineTo(cx + 6, cy - 32);
-    ctx.fill();
+    // Color con el que se tiñe mientras prepara un ataque
+    const preparing = this.state === 'windup' || this.state === 'attack';
+    const prepColor = this.attack === 'orbs' ? '#8b3bd1' : '#ff7a45';
 
-    // Cuerpo: cambia de color mientras prepara un ataque
-    let color = '#6b1426';
-    if (this.state === 'windup' || this.state === 'attack') {
-      color = this.attack === 'orbs' ? '#8b3bd1' : '#ff7a45';
+    if (hasSprite('boss')) {
+      drawShadow(ctx, cx, cy + 38, 38, 10);
+
+      const frame = Math.floor(this.animTime * 2) % 2; // respira
+      drawFrame(ctx, 'boss', frame, 0, cx, cy);
+      if (preparing) {
+        drawFrame(ctx, 'boss', frame, 0, cx, cy, { tint: prepColor, alpha: 0.5 });
+      }
+      if (this.hitFlash > 0) {
+        drawFrame(ctx, 'boss', frame, 0, cx, cy, { tint: '#ffffff' });
+      }
+    } else {
+      // Sin sprites: cuernos, cuerpo y ojos simples
+      ctx.fillStyle = '#3a0a14';
+      ctx.beginPath();
+      ctx.moveTo(cx - 30, cy - 18);
+      ctx.lineTo(cx - 20, cy - 58);
+      ctx.lineTo(cx - 6, cy - 32);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 30, cy - 18);
+      ctx.lineTo(cx + 20, cy - 58);
+      ctx.lineTo(cx + 6, cy - 32);
+      ctx.fill();
+
+      let color = '#6b1426';
+      if (preparing) color = prepColor;
+      if (this.hitFlash > 0) color = '#ffffff';
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffd27a';
+      ctx.fillRect(cx - 16, cy - 8, 10, 6);
+      ctx.fillRect(cx + 6, cy - 8, 10, 6);
     }
-    if (this.hitFlash > 0) color = '#ffffff';
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Ojos
-    ctx.fillStyle = '#ffd27a';
-    ctx.fillRect(cx - 16, cy - 8, 10, 6);
-    ctx.fillRect(cx + 6, cy - 8, 10, 6);
 
     for (const orb of this.orbs) orb.draw(ctx, camera);
   }

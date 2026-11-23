@@ -1,4 +1,5 @@
 import { sfx } from '../core/audio.js';
+import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
 
 // Demonio menor: se queda quieto hasta que te ve, te persigue y te ataca
 // con un aviso. Si lo golpeas mientras prepara el ataque, se lo interrumpes.
@@ -27,6 +28,7 @@ export class Enemy {
     this.hitFlash = 0;
     this.kbx = 0; // empuje al recibir un golpe
     this.kby = 0;
+    this.animTime = Math.random() * 2; // para que no todos se muevan igual
   }
 
   get alive() {
@@ -59,6 +61,7 @@ export class Enemy {
   update(dt, player, world) {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.stateTimer -= dt;
+    this.animTime += dt;
 
     // Empuje que se va apagando
     this.x += this.kbx * dt;
@@ -120,27 +123,40 @@ export class Enemy {
       ctx.fill();
     }
 
-    // Cuernos
-    ctx.fillStyle = '#5a1020';
-    ctx.beginPath();
-    ctx.moveTo(cx - 13, cy - 8);
-    ctx.lineTo(cx - 8, cy - 26);
-    ctx.lineTo(cx - 2, cy - 12);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + 13, cy - 8);
-    ctx.lineTo(cx + 8, cy - 26);
-    ctx.lineTo(cx + 2, cy - 12);
-    ctx.fill();
+    if (hasSprite('enemy')) {
+      drawShadow(ctx, cx, cy + 14, 14, 5);
 
-    // Cuerpo
-    let color = '#a32339';
-    if (this.state === 'windup') color = '#ff7a45';
-    if (this.hitFlash > 0) color = '#ffffff';
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
-    ctx.fill();
+      // Se mueve más rápido mientras persigue
+      const frame = Math.floor(this.animTime * (this.state === 'chase' ? 7 : 3)) % 2;
+      drawFrame(ctx, 'enemy', frame, 0, cx, cy);
+      if (this.state === 'windup') {
+        drawFrame(ctx, 'enemy', frame, 0, cx, cy, { tint: '#ff7a45', alpha: 0.55 });
+      }
+      if (this.hitFlash > 0) {
+        drawFrame(ctx, 'enemy', frame, 0, cx, cy, { tint: '#ffffff' });
+      }
+    } else {
+      // Sin sprites: cuernos y cuerpo simples
+      ctx.fillStyle = '#5a1020';
+      ctx.beginPath();
+      ctx.moveTo(cx - 13, cy - 8);
+      ctx.lineTo(cx - 8, cy - 26);
+      ctx.lineTo(cx - 2, cy - 12);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + 13, cy - 8);
+      ctx.lineTo(cx + 8, cy - 26);
+      ctx.lineTo(cx + 2, cy - 12);
+      ctx.fill();
+
+      let color = '#a32339';
+      if (this.state === 'windup') color = '#ff7a45';
+      if (this.hitFlash > 0) color = '#ffffff';
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Barra de vida (solo si ya recibió daño)
     if (this.hp < this.maxHp) {

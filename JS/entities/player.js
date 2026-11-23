@@ -1,4 +1,5 @@
 import { sfx } from '../core/audio.js';
+import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
 
 // Números del combate: cámbialos aquí para ajustar cómo se siente.
 const ATTACK = {
@@ -70,6 +71,9 @@ export class Player {
     this.rollDir = { x: 0, y: 0 };
 
     this.invulnTimer = 0;
+
+    this.animTime = 0; // para animar los pasos
+    this.moving = false;
   }
 
   get isRolling() {
@@ -149,6 +153,9 @@ export class Player {
     }
     this.x += vx * dt;
     this.y += vy * dt;
+
+    this.moving = !this.isRolling && (vx !== 0 || vy !== 0);
+    this.animTime = this.moving ? this.animTime + dt : 0;
 
     // No salirse del mundo
     const half = this.size / 2;
@@ -324,8 +331,8 @@ export class Player {
 
     // Arco del golpe
     if (this.isAttacking) {
-      const alpha = 0.4 * (this.attackTimer / ATTACK.duration);
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      const arcAlpha = 0.4 * (this.attackTimer / ATTACK.duration);
+      ctx.fillStyle = `rgba(255, 255, 255, ${arcAlpha})`;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(
@@ -339,17 +346,48 @@ export class Player {
       ctx.fill();
     }
 
-    // Cuerpo: semitransparente al rodar, parpadea al recibir daño
+    // Semitransparente al rodar, parpadea al recibir daño
     let alpha = 1;
     if (this.isRolling) {
-      alpha = 0.45;
+      alpha = 0.6;
     } else if (this.invulnTimer > 0) {
       alpha = Math.floor(this.invulnTimer * 20) % 2 === 0 ? 0.35 : 1;
     }
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = this.color;
-    ctx.fillRect(cx - half, cy - half, this.size, this.size);
-    ctx.globalAlpha = 1;
+
+    if (hasSprite('player')) {
+      drawShadow(ctx, cx, cy + 13, 11, 4);
+
+      if (this.isRolling) {
+        // Fila 3 de la hoja: 4 cuadros de la bola rodando
+        const progress = 1 - this.rollTimer / ROLL.duration;
+        drawFrame(ctx, 'player', Math.min(3, Math.floor(progress * 4)), 3, cx, cy, { alpha });
+      } else {
+        // Fila 0 = abajo, 1 = arriba, 2 = izquierda (la derecha es la izquierda reflejada)
+        const f = this.facing;
+        let row = f.y < 0 ? 1 : 0;
+        let flip = false;
+        if (Math.abs(f.x) >= Math.abs(f.y)) {
+          row = 2;
+          flip = f.x > 0;
+        }
+        const step = this.moving ? Math.floor(this.animTime * 8) % 4 : 0;
+        drawFrame(ctx, 'player', step, row, cx, cy, { flip, alpha });
+      }
+    } else {
+      // Sin sprites: cuadro simple con una marca de hacia dónde mira
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = this.color;
+      ctx.fillRect(cx - half, cy - half, this.size, this.size);
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = '#d8344d';
+      ctx.fillRect(
+        Math.round(cx + this.facing.x * half) - 3,
+        Math.round(cy + this.facing.y * half) - 3,
+        6,
+        6
+      );
+    }
 
     // Escudo: parpadea cuando está por acabarse
     if (this.shieldTimer > 0) {
@@ -362,14 +400,5 @@ export class Player {
         ctx.stroke();
       }
     }
-
-    // Marca que indica hacia dónde mira
-    ctx.fillStyle = '#d8344d';
-    ctx.fillRect(
-      Math.round(cx + this.facing.x * half) - 3,
-      Math.round(cy + this.facing.y * half) - 3,
-      6,
-      6
-    );
   }
 }

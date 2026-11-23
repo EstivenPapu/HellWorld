@@ -4,9 +4,9 @@ RPG de acción de mundo abierto que se juega en el navegador, en PC y en celular
 Exploras un reino poseído por un demonio, te vuelves más poderoso con las **Almas**
 y descubres hechizos para derrotarlo.
 
-**Versión actual: 0.1 (primer reino)**
+**Versión actual: 0.11 (en camino a la 0.2; el primer reino se está ampliando)**
 
-🎮 **Jugar:** https://estivenpapu.github.io/HellWorld/
+🎮 **Jugar:** https://TU-USUARIO.github.io/TU-REPOSITORIO/
 
 ## Controles
 
@@ -55,6 +55,8 @@ Usa un servidor local, por ejemplo la extensión **Live Server** de VS Code.
 ```
 index.html
 css/style.css
+assets/sprites/        hojas de sprites en pixel art (PNG)
+tools/                 generador de sprites (Python + Pillow)
 js/
   main.js            bucle principal y estados del juego
   core/              input (teclado, mouse y táctil), cámara y audio
@@ -64,5 +66,6 @@ js/
 
 ## Tecnología
 
-JavaScript puro y Canvas 2D, sin librerías. No usa imágenes ni archivos de audio:
-todo se dibuja y se sintetiza con código.
+JavaScript puro y Canvas 2D, sin librerías. El arte es pixel art 16x16 ampliado x2,
+generado con código (`tools/generate_sprites.py`, necesita `pip install pillow`).
+El sonido se sintetiza con Web Audio, sin archivos de audio.

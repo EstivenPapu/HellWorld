@@ -1,3 +1,5 @@
+import { drawFrame, hasSprite } from '../core/sprites.js';
+
 // Alma suelta por un demonio: sale disparada, y cuando te acercas
 // es atraída hacia ti y se suma a tu contador.
 export class Soul {
@@ -49,9 +51,13 @@ export class Soul {
     ctx.arc(cx, cy, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#8fd8ff';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-    ctx.fill();
+    if (hasSprite('soul')) {
+      drawFrame(ctx, 'soul', Math.floor(this.age * 4) % 2, 0, cx, cy);
+    } else {
+      ctx.fillStyle = '#8fd8ff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }

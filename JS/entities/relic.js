@@ -1,3 +1,5 @@
+import { drawFrame, hasSprite } from '../core/sprites.js';
+
 // Reliquia de la misión: una luz violeta en el suelo. Se recoge al tocarla.
 export class Relic {
   constructor(x, y) {
@@ -28,13 +30,18 @@ export class Relic {
     ctx.arc(cx, cy, 30 * pulse, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = '#b48cff';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 16);
-    ctx.lineTo(cx + 11, cy);
-    ctx.lineTo(cx, cy + 16);
-    ctx.lineTo(cx - 11, cy);
-    ctx.closePath();
-    ctx.fill();
+    if (hasSprite('relic')) {
+      const bob = Math.round(Math.sin(this.age * 2.5) * 3); // flota suavemente
+      drawFrame(ctx, 'relic', Math.floor(this.age * 3) % 2, 0, cx, cy + bob);
+    } else {
+      ctx.fillStyle = '#b48cff';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 16);
+      ctx.lineTo(cx + 11, cy);
+      ctx.lineTo(cx, cy + 16);
+      ctx.lineTo(cx - 11, cy);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 }

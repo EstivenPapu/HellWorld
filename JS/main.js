@@ -1,6 +1,7 @@
 import { Input } from './core/input.js';
 import { Camera } from './core/camera.js';
 import { audio, sfx } from './core/audio.js';
+import { loadSprites } from './core/sprites.js';
 import { World } from './systems/world.js';
 import { Hud } from './systems/hud.js';
 import { SpellSystem } from './systems/spells.js';
@@ -24,6 +25,8 @@ const ctx = canvas.getContext('2d');
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  // Cambiar el tamaño reinicia el lienzo: sin suavizado el pixel art se ve nítido
+  ctx.imageSmoothingEnabled = false;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -364,4 +367,8 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(loop);
+// El juego arranca cuando terminan de cargar los sprites
+loadSprites().then(() => {
+  last = performance.now();
+  requestAnimationFrame(loop);
+});
