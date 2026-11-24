@@ -29,6 +29,11 @@ export class Projectile {
       return;
     }
 
+    if (world.isBlocked(this.x, this.y, 2)) {
+      this.alive = false;
+      return;
+    }
+
     for (const e of enemies) {
       if (!e.alive) continue;
       if (Math.hypot(e.x - this.x, e.y - this.y) <= e.radius + this.radius) {

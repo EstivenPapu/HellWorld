@@ -1,9 +1,11 @@
+import { LAYOUT } from './layout.js';
+
 // Misión secundaria de prueba: "La reliquia perdida".
 // available -> active -> ready -> done
 export const QUEST = {
   name: 'La reliquia perdida',
   reward: 80,
-  relic: { x: 450, y: 2650 }, // suroeste del reino
+  relic: LAYOUT.relic, // dentro de las Ruinas del Norte
 };
 
 const STATES = ['available', 'active', 'ready', 'done'];
@@ -35,7 +37,7 @@ export class Quest {
 
   // Texto de objetivo que se ve en pantalla
   get objective() {
-    if (this.state === 'active') return 'Misión: encuentra la reliquia (suroeste)';
+    if (this.state === 'active') return 'Misión: encuentra la reliquia (ruinas del norte)';
     if (this.state === 'ready') return 'Misión: vuelve con el Peregrino';
     return '';
   }
@@ -45,13 +47,13 @@ export class Quest {
     switch (this.state) {
       case 'available':
         return {
-          text: 'Viajero... un fragmento de mi alma quedó atrapado en las ruinas del suroeste. Tráelo y te recompensaré.',
+          text: 'Viajero... un fragmento de mi alma quedó atrapado en unas ruinas al norte. Tráelo y te recompensaré.',
           button: 'Aceptar',
           action: 'accept',
         };
       case 'active':
         return {
-          text: 'Las ruinas están al suroeste, lejos del altar. Busca una luz violeta en el suelo.',
+          text: 'Las ruinas están al norte, muy lejos del altar. Busca una luz violeta en el suelo.',
           button: 'Entendido',
           action: null,
         };

@@ -19,6 +19,7 @@ const ROLL = {
 
 const HIT_INVULN = 0.5; // segundos sin recibir daño después de un golpe
 const AUTO_AIM_RANGE = 380; // en el celular apunta solo a lo que esté a esta distancia
+const BODY_RADIUS = 11;     // qué tan ancho es para chocar con árboles y muros
 
 // Valores base y cuánto crece cada uno por nivel (se ajustan aquí)
 const BASE_HP = 100;
@@ -151,6 +152,8 @@ export class Player {
       vx = move.x * this.speed * factor;
       vy = move.y * this.speed * factor;
     }
+    const prevX = this.x;
+    const prevY = this.y;
     this.x += vx * dt;
     this.y += vy * dt;
 
@@ -161,6 +164,7 @@ export class Player {
     const half = this.size / 2;
     this.x = Math.min(Math.max(this.x, half), world.width - half);
     this.y = Math.min(Math.max(this.y, half), world.height - half);
+    world.resolveMove(this, BODY_RADIUS, prevX, prevY);
 
     if (this.isAttacking) this.applyAttack(targets);
   }

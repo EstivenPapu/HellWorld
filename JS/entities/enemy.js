@@ -14,6 +14,7 @@ export class Enemy {
     this.hp = this.maxHp;
     this.speed = 110;
     this.souls = 10; // almas que suelta al morir
+    this.barWidth = 40; // ancho de su barra de vida sobre la cabeza (los guardianes usarán una más ancha)
 
     this.aggroRange = 300;  // a qué distancia te detecta
     this.loseRange = 620;   // a qué distancia te pierde
@@ -62,6 +63,8 @@ export class Enemy {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.stateTimer -= dt;
     this.animTime += dt;
+    const startX = this.x;
+    const startY = this.y;
 
     // Empuje que se va apagando
     this.x += this.kbx * dt;
@@ -108,6 +111,7 @@ export class Enemy {
     // No salirse del mundo
     this.x = Math.min(Math.max(this.x, this.radius), world.width - this.radius);
     this.y = Math.min(Math.max(this.y, this.radius), world.height - this.radius);
+    world.resolveMove(this, 12, startX, startY);
   }
 
   draw(ctx, camera) {
@@ -160,7 +164,7 @@ export class Enemy {
 
     // Barra de vida (solo si ya recibió daño)
     if (this.hp < this.maxHp) {
-      const w = 40;
+      const w = this.barWidth;
       ctx.fillStyle = '#2a0f14';
       ctx.fillRect(cx - w / 2, cy - this.radius - 20, w, 5);
       ctx.fillStyle = '#d8344d';

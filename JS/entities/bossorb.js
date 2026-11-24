@@ -27,6 +27,11 @@ export class BossOrb {
       return;
     }
 
+    if (world.isBlocked(this.x, this.y, 2)) {
+      this.alive = false;
+      return;
+    }
+
     const hitDistance = player.size / 2 + this.radius;
     const touching = Math.hypot(player.x - this.x, player.y - this.y) <= hitDistance;
     if (touching && !player.invulnerable) {

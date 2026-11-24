@@ -46,6 +46,7 @@ export class Boss {
     this.shockTimer = 0;
     this.orbs = [];
     this.animTime = 0;
+    this.arena = null; // el castillo: { x0, y0, x1, y1 }. El jefe solo despierta si entras
   }
 
   get alive() {
@@ -80,6 +81,8 @@ export class Boss {
     this.shockTimer = Math.max(0, this.shockTimer - dt);
     this.stateTimer -= dt;
     this.animTime += dt;
+    const startX = this.x;
+    const startY = this.y;
 
     for (const orb of this.orbs) orb.update(dt, player, world);
     this.orbs = this.orbs.filter((o) => o.alive);
@@ -88,14 +91,17 @@ export class Boss {
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy) || 1;
 
+    // Si sales del castillo en medio de la pelea, el jefe se reinicia
+    if (this.state !== 'idle' && !this.playerNear(player, 64)) this.resetFight();
+
     switch (this.state) {
       case 'idle':
-        if (dist <= this.aggroRange) this.state = 'chase';
+        if (this.playerNear(player, 0)) this.state = 'chase';
         break;
 
       case 'chase':
-        if (dist > this.leashRange) {
-          this.resetFight();
+        if (!this.playerNear(player, 64)) {
+          this.resetFight(); // saliste del castillo: se reinicia
           break;
         }
         // Se acerca, pero sin pegarse al jugador
@@ -132,6 +138,24 @@ export class Boss {
     // No salirse del mundo
     this.x = Math.min(Math.max(this.x, this.radius), world.width - this.radius);
     this.y = Math.min(Math.max(this.y, this.radius), world.height - this.radius);
+    world.resolveMove(this, 34, startX, startY);
+
+    // Nunca sale del castillo
+    if (this.arena) {
+      const a = this.arena;
+      const margin = 32 + 34; // el muro y el cuerpo del jefe
+      this.x = Math.min(Math.max(this.x, a.x0 + margin), a.x1 - margin);
+      this.y = Math.min(Math.max(this.y, a.y0 + margin), a.y1 - margin);
+    }
+  }
+
+  // ¿El jugador está dentro del castillo (con un margen)? Sin castillo, usa la distancia.
+  playerNear(player, pad) {
+    if (this.arena) {
+      const a = this.arena;
+      return player.x > a.x0 - pad && player.x < a.x1 + pad && player.y > a.y0 - pad && player.y < a.y1 + pad;
+    }
+    return Math.hypot(player.x - this.x, player.y - this.y) <= (pad > 0 ? this.leashRange : this.aggroRange);
   }
 
   startAttack(dist, dx, dy) {

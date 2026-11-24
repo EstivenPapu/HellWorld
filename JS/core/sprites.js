@@ -11,7 +11,10 @@ const SHEETS = {
   altar: { src: 'assets/sprites/altar.png', w: 24, h: 24 },
   relic: { src: 'assets/sprites/relic.png', w: 16, h: 16 },
   soul: { src: 'assets/sprites/soul.png', w: 8, h: 8 },
-  tiles: { src: 'assets/sprites/tiles.png', w: 16, h: 16 },
+  tiles: { src: 'assets/sprites/tiles.png', w: 16, h: 16 }, // 12 pisos: pasto x4, piedra x2, brasas x2, tierra x2, ruinas x2
+  trees: { src: 'assets/sprites/trees.png', w: 24, h: 32 },
+  rocks: { src: 'assets/sprites/rocks.png', w: 16, h: 16 },
+  walls: { src: 'assets/sprites/walls.png', w: 16, h: 16 }, // bloque, agrietado, musgo, pilar, puerta
 };
 
 const images = {};

@@ -3,6 +3,7 @@ import { Camera } from './core/camera.js';
 import { audio, sfx } from './core/audio.js';
 import { loadSprites } from './core/sprites.js';
 import { World } from './systems/world.js';
+import { LAYOUT } from './systems/layout.js';
 import { Hud } from './systems/hud.js';
 import { SpellSystem } from './systems/spells.js';
 import { AltarMenu } from './systems/altar-menu.js';
@@ -39,8 +40,8 @@ const hud = new Hud();
 const spells = new SpellSystem();
 
 // El altar es el punto de inicio y de reaparición; el Peregrino vive cerca
-const altar = new Altar(1600, 1440);
-const npc = new Npc(1780, 1470, 'Peregrino');
+const altar = new Altar(LAYOUT.altar.x, LAYOUT.altar.y);
+const npc = new Npc(LAYOUT.npc.x, LAYOUT.npc.y, 'Peregrino');
 const spawn = { x: altar.x, y: altar.y + 80 };
 const player = new Player(spawn.x, spawn.y);
 const quest = new Quest();
@@ -86,7 +87,12 @@ if (saved) {
 
   const ls = saved.lostSouls;
   if (ls && [ls.x, ls.y, ls.amount].every(Number.isFinite) && ls.amount > 0) {
-    lostSouls = new LostSouls(ls.x, ls.y, Math.floor(ls.amount));
+    // Si la partida es de una versión con otro mapa, las almas pueden quedar dentro de
+    // un árbol o muro: en ese caso aparecen junto al altar para poder recogerlas.
+    const free = !world.collides(ls.x, ls.y, 20);
+    const x = free ? ls.x : spawn.x + 48;
+    const y = free ? ls.y : spawn.y;
+    lostSouls = new LostSouls(x, y, Math.floor(ls.amount));
   }
 }
 
@@ -96,27 +102,42 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', saveGame);
 
 // ---------- Enemigos ----------
-// Los demonios rondan la base del jefe, repartidos en círculo a su alrededor
-function spawnEnemies(base, count) {
+function spawnEnemies() {
   const list = [];
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + 0.3;
+
+  // Campamentos de demonios repartidos por el reino
+  for (const camp of world.camps) {
+    for (let i = 0; i < camp.count; i++) {
+      const angle = (Math.PI * 2 * i) / camp.count + camp.x * 0.001;
+      list.push(new Enemy(camp.x + Math.cos(angle) * 48, camp.y + Math.sin(angle) * 48));
+    }
+  }
+
+  // Los guardias del castillo, en círculo alrededor de sus muros
+  const base = world.bossBase;
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 * i) / 5 + 0.3;
     const distance = base.radius + 330;
     list.push(
-      new Enemy(
-        base.x + Math.cos(angle) * distance,
-        base.y + Math.sin(angle) * distance
-      )
+      new Enemy(base.x + Math.cos(angle) * distance, base.y + Math.sin(angle) * distance)
     );
   }
+
+  for (const e of list) world.resolve(e, 12);
   return list;
 }
 
 // Devuelve a su lugar a los demonios y al jefe (si sigue vivo)
 function resetEncounters() {
   enemies.length = 0;
-  enemies.push(...spawnEnemies(world.bossBase, 5));
-  boss = bossDefeated ? null : new Boss(world.bossBase.x, world.bossBase.y);
+  enemies.push(...spawnEnemies());
+
+  if (bossDefeated) {
+    boss = null;
+  } else {
+    boss = new Boss(world.bossBase.x, world.bossBase.y);
+    boss.arena = world.castle;
+  }
 }
 resetEncounters();
 
@@ -304,6 +325,52 @@ function drawVictory() {
   ctx.textAlign = 'left';
 }
 
+// ¿Está cerca de la pantalla? (para no dibujar lo que está lejos)
+function onScreen(x, y, margin = 140) {
+  return (
+    x > camera.x - margin &&
+    x < camera.x + canvas.width + margin &&
+    y > camera.y - margin &&
+    y < camera.y + canvas.height + margin
+  );
+}
+
+// Todo lo que tiene altura (árboles, personajes, altar...) se dibuja ordenado
+// de arriba hacia abajo: así puedes pasar por detrás de un árbol y por delante de otro.
+function drawWorldObjects() {
+  const items = [];
+
+  for (const p of world.visibleProps(camera, canvas.width, canvas.height)) {
+    items.push({ y: p.y, draw: () => world.drawProp(ctx, p, camera, player) });
+  }
+  if (onScreen(altar.x, altar.y)) {
+    items.push({
+      y: altar.y + 20,
+      draw: () => altar.draw(ctx, camera, interactableNow === 'altar', input.isTouch),
+    });
+  }
+  if (onScreen(npc.x, npc.y)) {
+    items.push({
+      y: npc.y + 12,
+      draw: () => npc.draw(ctx, camera, interactableNow === 'npc', quest.state, input.isTouch),
+    });
+  }
+  if (relic && onScreen(relic.x, relic.y)) {
+    items.push({ y: relic.y, draw: () => relic.draw(ctx, camera) });
+  }
+  for (const e of enemies) {
+    if (onScreen(e.x, e.y)) items.push({ y: e.y + 12, draw: () => e.draw(ctx, camera) });
+  }
+  if (boss && onScreen(boss.x, boss.y, 260)) {
+    items.push({ y: boss.y + 30, draw: () => boss.draw(ctx, camera) });
+  }
+  items.push({ y: player.y + 12, draw: () => player.draw(ctx, camera) });
+
+  items.sort((a, b) => a.y - b.y);
+  for (const item of items) item.draw();
+}
+
+let interactableNow = null;
 let last = performance.now();
 
 function loop(now) {
@@ -315,6 +382,7 @@ function loop(now) {
   victoryTimer = Math.max(0, victoryTimer - dt);
 
   const interactable = state === 'playing' ? nearestInteractable() : null;
+  interactableNow = interactable;
 
   // 1. Actualizar
   if (state === 'playing') {
@@ -345,15 +413,10 @@ function loop(now) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   world.draw(ctx, camera, canvas.width, canvas.height);
-  altar.draw(ctx, camera, interactable === 'altar', input.isTouch);
-  npc.draw(ctx, camera, interactable === 'npc', quest.state, input.isTouch);
-  if (relic) relic.draw(ctx, camera);
   if (lostSouls) lostSouls.draw(ctx, camera);
   souls.forEach((s) => s.draw(ctx, camera));
-  enemies.forEach((e) => e.draw(ctx, camera));
-  if (boss) boss.draw(ctx, camera);
+  drawWorldObjects();
   spells.draw(ctx, camera);
-  player.draw(ctx, camera);
   hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length, boss);
   if (victoryTimer > 0) drawVictory();
   if (state === 'dead') drawDeathOverlay();
@@ -365,6 +428,27 @@ function loop(now) {
   });
 
   requestAnimationFrame(loop);
+}
+
+// Modo de pruebas: abre el juego con ?debug al final de la dirección y, en la consola
+// del navegador (F12), tendrás "hellworld" para teletransportarte, por ejemplo:
+//   hellworld.teleport(5312, 1400)   // a la puerta del castillo
+if (location.search.includes('debug')) {
+  window.hellworld = {
+    player,
+    world,
+    enemies,
+    quest,
+    layout: LAYOUT,
+    get boss() {
+      return boss;
+    },
+    teleport(x, y) {
+      player.x = x;
+      player.y = y;
+      world.resolve(player, 11);
+    },
+  };
 }
 
 // El juego arranca cuando terminan de cargar los sprites

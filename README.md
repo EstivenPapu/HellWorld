@@ -4,7 +4,7 @@ RPG de acción de mundo abierto que se juega en el navegador, en PC y en celular
 Exploras un reino poseído por un demonio, te vuelves más poderoso con las **Almas**
 y descubres hechizos para derrotarlo.
 
-**Versión actual: 0.11 (en camino a la 0.2; el primer reino se está ampliando)**
+**Versión actual: 0.12 (en camino a la 0.2; el primer reino se está ampliando)**
 
 🎮 **Jugar:** https://TU-USUARIO.github.io/TU-REPOSITORIO/
 
@@ -69,3 +69,14 @@ js/
 JavaScript puro y Canvas 2D, sin librerías. El arte es pixel art 16x16 ampliado x2,
 generado con código (`tools/generate_sprites.py`, necesita `pip install pillow`).
 El sonido se sintetiza con Web Audio, sin archivos de audio.
+
+## Modo de pruebas
+
+Abre el juego con `?debug` al final de la dirección (por ejemplo `http://127.0.0.1:5500/?debug`)
+y en la consola del navegador (F12) tendrás `hellworld` para moverte por el mapa sin caminar:
+
+```js
+hellworld.teleport(5312, 1400)   // a la puerta del castillo del jefe
+hellworld.teleport(1120, 3296)   // a la reliquia, en las Ruinas del Norte
+hellworld.layout                 // todas las posiciones importantes del mapa
+```

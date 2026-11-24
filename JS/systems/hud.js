@@ -67,7 +67,7 @@ export class Hud {
 
     if (!this.touch) this.drawSpellSlots(ctx, player, spells, viewWidth, viewHeight);
 
-    if (boss && boss.engaged) this.drawBossBar(ctx, boss, viewWidth);
+    if (boss && boss.engaged) this.drawBossBar(ctx, boss, viewWidth, viewHeight);
     this.drawToast(ctx, viewWidth);
 
     // En el celular no se muestra la ayuda de teclas
@@ -96,24 +96,35 @@ export class Hud {
     ctx.textAlign = 'left';
   }
 
-  // Barra de vida del jefe, arriba al centro
-  drawBossBar(ctx, boss, viewWidth) {
-    const w = Math.min(520, viewWidth - 80);
-    const x = (viewWidth - w) / 2;
-    const y = 44;
+  // Barra de vida del jefe: vertical, pegada al borde derecho de la pantalla.
+  // (Los guardianes no usan esta barra: la llevan sobre la cabeza, como los demonios.)
+  drawBossBar(ctx, boss, viewWidth, viewHeight) {
+    const barW = 16;
+    const top = 84; // debajo de la ayuda de teclas
+    // En el celular los botones ocupan la parte baja de la derecha
+    const bottom = this.touch ? Math.max(top + 90, viewHeight - 200) : viewHeight - 24;
+    const h = bottom - top;
+    const x = viewWidth - 24 - barW;
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(x - 3, y - 3, w + 6, 20);
+    ctx.fillRect(x - 3, top - 3, barW + 6, h + 6);
     ctx.fillStyle = '#2a0f14';
-    ctx.fillRect(x, y, w, 14);
-    ctx.fillStyle = '#d8344d';
-    ctx.fillRect(x, y, w * (boss.hp / boss.maxHp), 14);
+    ctx.fillRect(x, top, barW, h);
 
+    // La vida se va vaciando de arriba hacia abajo
+    const fill = h * (boss.hp / boss.maxHp);
+    ctx.fillStyle = '#d8344d';
+    ctx.fillRect(x, top + h - fill, barW, fill);
+
+    // Nombre, de pie a lo largo de la barra
+    ctx.save();
+    ctx.translate(x - 10, top + h / 2);
+    ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = '#e8e8f0';
     ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(boss.name, viewWidth / 2, y - 10);
-    ctx.textAlign = 'left';
+    ctx.fillText(boss.name, 0, 0);
+    ctx.restore();
   }
 
   // Los 3 espacios de hechizos, abajo al centro
