@@ -78,7 +78,7 @@ export class Hud {
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('WASD mover · Clic izq. atacar · Espacio rodar', viewWidth - 20, 30);
-    ctx.fillText('Clic der. Llama · Q Nova · E Escudo · F usar · M sonido', viewWidth - 20, 52);
+    ctx.fillText('Clic der. Llama · Q Nova · E Escudo · F usar · N mapa · M sonido', viewWidth - 20, 52);
     ctx.textAlign = 'left';
   }
 

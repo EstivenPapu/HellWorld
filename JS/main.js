@@ -6,6 +6,7 @@ import { World } from './systems/world.js';
 import { LAYOUT } from './systems/layout.js';
 import { Hud } from './systems/hud.js';
 import { SpellSystem } from './systems/spells.js';
+import { Minimap } from './systems/minimap.js';
 import { AltarMenu } from './systems/altar-menu.js';
 import { TouchControls } from './systems/touch-controls.js';
 import { Dialog } from './systems/dialog.js';
@@ -37,6 +38,7 @@ const touch = new TouchControls(input);
 const world = new World();
 const camera = new Camera(world.width, world.height);
 const hud = new Hud();
+const minimap = new Minimap(world);
 const spells = new SpellSystem();
 
 // El altar es el punto de inicio y de reaparición; el Peregrino vive cerca
@@ -53,7 +55,7 @@ let bossDefeated = false; // el jefe derrotado ya no vuelve
 let relic = null;      // la reliquia de la misión (solo existe con la misión activa)
 let lostSouls = null;  // las almas que perdiste al morir
 
-// Estados del juego: 'playing', 'dead', 'altar' (menú) o 'dialog'
+// Estados del juego: 'playing', 'dead', 'altar' (menú), 'dialog' o 'map' (mapa grande)
 let state = 'playing';
 let deathTimer = 0;
 let victoryTimer = 0;
@@ -63,6 +65,11 @@ let resetting = false; // true mientras se borra la partida, para no volver a gu
 const DEATH_TIME = 2.4;
 const VICTORY_TIME = 4;
 const AUTOSAVE_EVERY = 5; // segundos
+
+// Esc cierra el mapa grande
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape' && state === 'map') state = 'playing';
+});
 
 // ---------- Guardado ----------
 function saveGame() {
@@ -370,6 +377,20 @@ function drawWorldObjects() {
   for (const item of items) item.draw();
 }
 
+// Lo que necesita el minimapa para dibujar las marcas
+function mapInfo() {
+  return {
+    player,
+    camera,
+    viewW: canvas.width,
+    viewH: canvas.height,
+    altar,
+    npc,
+    relic: quest.state === 'active' ? QUEST.relic : null,
+    questState: quest.state,
+  };
+}
+
 let interactableNow = null;
 let last = performance.now();
 
@@ -379,6 +400,12 @@ function loop(now) {
   last = now;
 
   const wantsInteract = input.consumeInteract();
+  const wantsMap = input.consumeMap();
+
+  // N (o tocar el minimapa) abre y cierra el mapa grande, que pausa el juego
+  if (wantsMap && state === 'playing') state = 'map';
+  else if (wantsMap && state === 'map') state = 'playing';
+  input.mapOpen = state === 'map';
   victoryTimer = Math.max(0, victoryTimer - dt);
 
   const interactable = state === 'playing' ? nearestInteractable() : null;
@@ -418,6 +445,8 @@ function loop(now) {
   drawWorldObjects();
   spells.draw(ctx, camera);
   hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length, boss);
+  input.minimapRect = minimap.draw(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());
+  if (state === 'map') minimap.drawBig(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());
   if (victoryTimer > 0) drawVictory();
   if (state === 'dead') drawDeathOverlay();
 
@@ -439,6 +468,7 @@ if (location.search.includes('debug')) {
     world,
     enemies,
     quest,
+    input,
     layout: LAYOUT,
     get boss() {
       return boss;

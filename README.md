@@ -4,7 +4,7 @@ RPG de acción de mundo abierto que se juega en el navegador, en PC y en celular
 Exploras un reino poseído por un demonio, te vuelves más poderoso con las **Almas**
 y descubres hechizos para derrotarlo.
 
-**Versión actual: 0.12 (en camino a la 0.2; el primer reino se está ampliando)**
+**Versión actual: 0.13 (en camino a la 0.2; el primer reino se está ampliando)**
 
 🎮 **Jugar:** https://TU-USUARIO.github.io/TU-REPOSITORIO/
 
@@ -19,6 +19,7 @@ y descubres hechizos para derrotarlo.
 | Nova | Q | Botón Nova |
 | Escudo | E | Botón Escudo |
 | Usar altar / hablar | F | Botón Usar |
+| Mapa grande | N | Tocar el minimapa |
 | Silenciar | M (o el botón del altar) | Botón del altar |
 
 En el celular se juega mejor en horizontal. El personaje apunta solo al demonio más cercano.

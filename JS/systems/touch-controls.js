@@ -65,6 +65,17 @@ export class TouchControls {
 
     zone.addEventListener('pointerdown', (e) => {
       if (pointerId !== null) return;
+
+      // Tocar el minimapa abre el mapa grande; con el mapa abierto, cualquier toque lo cierra
+      const r = this.input.minimapRect;
+      const onMinimap =
+        r && e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h;
+      if (this.input.mapOpen || onMinimap) {
+        e.preventDefault();
+        this.input.pressMap();
+        return;
+      }
+
       e.preventDefault();
       pointerId = e.pointerId;
       if (zone.setPointerCapture) zone.setPointerCapture(e.pointerId);

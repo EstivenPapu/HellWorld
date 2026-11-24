@@ -10,6 +10,9 @@ export class Input {
     this._roll = false;
     this._spells = [false, false, false]; // 0: Llama, 1: Nova, 2: Escudo
     this._interact = false;
+    this._map = false;
+    this.mapOpen = false;    // lo actualiza main.js: con el mapa grande abierto, cualquier toque lo cierra
+    this.minimapRect = null; // lo actualiza main.js: dónde está el minimapa en pantalla
 
     // Celular: la perilla del joystick escribe aquí
     const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
@@ -28,6 +31,7 @@ export class Input {
         if (e.code === 'KeyQ') this._spells[1] = true;
         if (e.code === 'KeyE') this._spells[2] = true;
         if (e.code === 'KeyF') this._interact = true;
+        if (e.code === 'KeyN') this._map = true;
       }
       this.keys.add(e.code);
     });
@@ -90,6 +94,10 @@ export class Input {
     this._spells[index] = true;
   }
 
+  pressMap() {
+    this._map = true;
+  }
+
   pressInteract() {
     this._interact = true;
   }
@@ -107,6 +115,12 @@ export class Input {
     return pressed;
   }
 
+  consumeMap() {
+    const pressed = this._map;
+    this._map = false;
+    return pressed;
+  }
+
   consumeInteract() {
     const pressed = this._interact;
     this._interact = false;
@@ -118,6 +132,7 @@ export class Input {
     this._attack = false;
     this._roll = false;
     this._interact = false;
+    this._map = false;
     this._spells.fill(false);
   }
 
