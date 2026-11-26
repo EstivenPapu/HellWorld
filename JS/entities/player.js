@@ -7,8 +7,8 @@ const ATTACK = {
   cooldown: 0.45,   // espera antes de poder golpear otra vez
   range: 80,        // alcance en píxeles
   halfArc: Math.PI / 3, // mitad del ángulo del golpe (60° a cada lado)
-  damage: 10,
-  moveFactor: 0.6,  // velocidad al atacar (60%)
+  damage: 5,
+  moveFactor: 0.7,  // velocidad al atacar (60%)
 };
 
 const ROLL = {
@@ -22,9 +22,9 @@ const AUTO_AIM_RANGE = 380; // en el celular apunta solo a lo que esté a esta d
 const BODY_RADIUS = 11;     // qué tan ancho es para chocar con árboles y muros
 
 // Valores base y cuánto crece cada uno por nivel (se ajustan aquí)
-const BASE_HP = 100;
-const BASE_MANA = 60;
-const GROWTH = { hp: 20, melee: 3, mana: 10, spell: 0.15 };
+const BASE_HP = 30;
+const BASE_MANA = 50;
+const GROWTH = { hp: 10, melee: 2, mana: 5, spell: 0.10 };
 
 // Estadísticas que se mejoran en el altar con almas
 export const STATS = [
@@ -51,7 +51,7 @@ export class Player {
 
     this.maxMana = 60;
     this.mana = this.maxMana;
-    this.manaRegen = 8; // maná por segundo
+    this.manaRegen = 7; // maná por segundo
     this.noManaTimer = 0; // para avisar en pantalla que falta maná
     this.shieldTimer = 0;
 

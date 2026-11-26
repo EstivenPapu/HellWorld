@@ -6,6 +6,7 @@ export const SCALE = 2;
 const SHEETS = {
   player: { src: 'assets/sprites/player.png', w: 16, h: 16 }, // 4 cuadros x 4 filas (abajo, arriba, izquierda, rodar)
   enemy: { src: 'assets/sprites/enemy.png', w: 16, h: 16 },
+  tank: { src: 'assets/sprites/tank.png', w: 24, h: 24 },
   boss: { src: 'assets/sprites/boss.png', w: 40, h: 40 },
   npc: { src: 'assets/sprites/npc.png', w: 16, h: 16 },
   altar: { src: 'assets/sprites/altar.png', w: 24, h: 24 },

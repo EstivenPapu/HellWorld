@@ -104,16 +104,16 @@ export class Minimap {
     ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
 
     // Lo que se ve ahora en pantalla (solo en el minimapa chico)
-    if (!big) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(
-        Math.round(x + s.camera.x * k) + 0.5,
-        Math.round(y + s.camera.y * k) + 0.5,
-        Math.round(s.viewW * k),
-        Math.round(s.viewH * k)
-      );
-    }
+    //if (!big) {
+    //  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    //  ctx.lineWidth = 1;
+    //  ctx.strokeRect(
+    //    Math.round(x + s.camera.x * k) + 0.5,
+    //    Math.round(y + s.camera.y * k) + 0.5,
+    //    Math.round(s.viewW * k),
+    //    Math.round(s.viewH * k)
+    //  );
+    //}
 
     const r = big ? 5 : 3; // tamaño de las marcas
     const label = (text, px, py) => {

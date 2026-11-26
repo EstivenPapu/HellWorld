@@ -1,11 +1,11 @@
 // Orbe de sombra que lanza el jefe. Vuela recto y daña al jugador.
 // Si estás rodando (invulnerable) lo atraviesas sin recibir daño.
 export class BossOrb {
-  constructor(x, y, dirX, dirY, speed, damage) {
+  constructor(x, y, dirX, dirY, speed, damage, offset = 50) {
     this.dx = dirX;
     this.dy = dirY;
-    this.x = x + dirX * 50; // sale por delante del jefe
-    this.y = y + dirY * 50;
+    this.x = x + dirX * offset; // sale por delante de quien lo lanza
+    this.y = y + dirY * offset;
     this.speed = speed;
     this.damage = damage;
     this.radius = 10;

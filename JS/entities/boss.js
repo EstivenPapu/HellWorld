@@ -5,14 +5,14 @@ import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
 // Los ataques del jefe. Todos avisan antes de golpear. Ajusta los números aquí.
 const ATTACKS = {
   // Golpe en el suelo alrededor del jefe: sal del círculo o rueda
-  slam: { windup: 0.85, radius: 150, damage: 22 },
+  slam: { windup: 0.85, radius: 150, damage: 20 },
   // Embestida en línea recta hacia donde estabas al empezar el aviso
   charge: { windup: 0.7, speed: 650, duration: 0.55, damage: 18, width: 50 },
   // Tres orbes de sombra en abanico
-  orbs: { windup: 0.6, count: 3, spread: 0.35, speed: 320, damage: 10 },
+  orbs: { windup: 0.6, count: 10, spread: 0.35, speed: 320, damage: 10 },
 };
 
-const RECOVER_TIME = 0.9; // descanso después de cada ataque: tu momento para golpear
+const RECOVER_TIME = 0.5; // descanso después de cada ataque: tu momento para golpear
 const SHOCK_TIME = 0.25;
 
 // Jefe del primer reino: una sola fase, tres ataques.
@@ -24,7 +24,7 @@ export class Boss {
     this.x = x;
     this.y = y;
 
-    this.name = 'Demonio del Primer Reino'; // nombre provisional
+    this.name = 'BELCEBU'; // nombre provisional
     this.radius = 40;
     this.maxHp = 300;
     this.hp = this.maxHp;

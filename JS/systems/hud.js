@@ -55,9 +55,9 @@ export class Hud {
     ctx.fillText(`Almas: ${player.souls}`, x, manaY + manaH + 28);
 
     // Demonios que quedan
-    ctx.fillStyle = 'rgba(232, 232, 240, 0.8)';
-    ctx.font = '14px sans-serif';
-    ctx.fillText(`Demonios: ${enemiesLeft}`, x, manaY + manaH + 50);
+    //ctx.fillStyle = 'rgba(232, 232, 240, 0.8)';
+    //ctx.font = '14px sans-serif';
+    //ctx.fillText(`Demonios: ${enemiesLeft}`, x, manaY + manaH + 50);
 
     // Misión activa
     if (this.objective) {

@@ -1,35 +1,90 @@
 import { sfx } from '../core/audio.js';
 import { drawFrame, drawShadow, hasSprite } from '../core/sprites.js';
+import { BossOrb } from './bossorb.js';
 
-// Demonio menor: se queda quieto hasta que te ve, te persigue y te ataca
-// con un aviso. Si lo golpeas mientras prepara el ataque, se lo interrumpes.
-// Estados: idle -> chase -> windup (aviso) -> recover (descanso) -> chase
+// Tipos de demonio. Para cambiar la dificultad ajusta estos números.
+//   attack: cómo ataca
+//     melee  = golpe cuerpo a cuerpo con aviso
+//     shoot  = dispara una esfera de sombra y se mantiene a distancia
+//     dash   = embiste en línea recta
+//     slam   = golpe en área, lento y fuerte
+//     summon = invoca esbirros y se mantiene a distancia
+//   sheet/row: de dónde sale su dibujo en assets/sprites
+export const ENEMY_TYPES = {
+  menor: {
+    name: 'Demonio menor', sheet: 'enemy', row: 0, color: '#a32339', tint: '#ff7a45',
+    hp: 25, speed: 110, radius: 18, body: 12, souls: 2, aggro: 300, lose: 620, bar: 40,
+    shadow: { y: 14, rx: 14, ry: 5 },
+    attack: 'melee', range: 52, strike: 70, damage: 10, windup: 0.45, recover: 0.9,
+  },
+  lanzador: {
+    name: 'Lanzador', sheet: 'enemy', row: 1, color: '#8b3bd1', tint: '#c070ff',
+    hp: 30, speed: 85, radius: 16, body: 11, souls: 5, aggro: 420, lose: 700, bar: 40,
+    shadow: { y: 14, rx: 12, ry: 4 },
+    attack: 'shoot', range: 400, keepAway: 230, prefer: 320, damage: 8,
+    windup: 0.55, recover: 0.6, cooldown: 2.4, shotSpeed: 270,
+  },
+  veloz: {
+    name: 'Veloz', sheet: 'enemy', row: 2, color: '#d8602a', tint: '#ffe27a',
+    hp: 25, speed: 130, radius: 13, body: 10, souls: 5, aggro: 360, lose: 650, bar: 32,
+    shadow: { y: 14, rx: 10, ry: 4 },
+    attack: 'dash', range: 240, damage: 9, windup: 0.35, recover: 0.9, cooldown: 0.5,
+    dashSpeed: 560, dashTime: 0.32,
+  },
+  tanque: {
+    name: 'Tanque', sheet: 'tank', row: 0, color: '#5a5a70', tint: '#ff7a45',
+    hp: 100, speed: 55, radius: 24, body: 20, souls: 10, aggro: 280, lose: 600, bar: 56,
+    shadow: { y: 20, rx: 22, ry: 7 },
+    attack: 'slam', range: 80, slamRadius: 100, damage: 22, windup: 0.9, recover: 1.4, cooldown: 0.5,
+    knockback: 0.25, armor: true, // casi no lo empujan y no se le interrumpe el ataque
+  },
+  invocador: {
+    name: 'Invocador', sheet: 'enemy', row: 3, color: '#2a9a82', tint: '#7affc8',
+    hp: 20, speed: 75, radius: 15, body: 11, souls: 20, aggro: 450, lose: 700, bar: 40,
+    shadow: { y: 14, rx: 12, ry: 4 },
+    attack: 'summon', range: 520, keepAway: 260, prefer: 380,
+    windup: 0.9, recover: 0.8, cooldown: 7, minions: 2, maxMinions: 3,
+  },
+  esbirro: {
+    name: 'Esbirro', sheet: 'enemy', row: 4, color: '#d86a7a', tint: '#ff7a45',
+    hp: 10, speed: 150, radius: 11, body: 9, souls: 0, aggro: 600, lose: 900, bar: 24,
+    shadow: { y: 13, rx: 9, ry: 3 },
+    attack: 'melee', range: 34, strike: 46, damage: 5, windup: 0.3, recover: 0.7,
+  },
+};
+
+const MAX_ENEMIES = 90; // tope para que las invocaciones no se desborden
+
+// Estados: idle -> chase -> windup (aviso) -> [dash] -> recover -> chase
 export class Enemy {
-  constructor(x, y) {
+  constructor(x, y, type = 'menor') {
+    this.type = ENEMY_TYPES[type] ? type : 'menor';
+    const t = ENEMY_TYPES[this.type];
+    this.t = t;
+
     this.x = x;
     this.y = y;
-    this.radius = 18;
-
-    this.maxHp = 30;
-    this.hp = this.maxHp;
-    this.speed = 110;
-    this.souls = 10; // almas que suelta al morir
-    this.barWidth = 40; // ancho de su barra de vida sobre la cabeza (los guardianes usarán una más ancha)
-
-    this.aggroRange = 300;  // a qué distancia te detecta
-    this.loseRange = 620;   // a qué distancia te pierde
-    this.attackRange = 52;  // a qué distancia empieza a atacar
-    this.strikeRange = 70;  // alcance real del golpe
-    this.damage = 10;
-    this.windupTime = 0.45; // tiempo de aviso antes del golpe
-    this.recoverTime = 0.9; // descanso después del golpe
+    this.radius = t.radius; // para que lo golpeen
+    this.body = t.body;     // para chocar con árboles y muros
+    this.maxHp = t.hp;
+    this.hp = t.hp;
+    this.speed = t.speed;
+    this.souls = t.souls;   // almas que suelta al morir
+    this.barWidth = t.bar;  // ancho de su barra de vida sobre la cabeza
 
     this.state = 'idle';
     this.stateTimer = 0;
+    this.cooldown = 0.5 + Math.random(); // para que no ataquen todos a la vez
     this.hitFlash = 0;
     this.kbx = 0; // empuje al recibir un golpe
     this.kby = 0;
-    this.animTime = Math.random() * 2; // para que no todos se muevan igual
+    this.animTime = Math.random() * 2;
+
+    this.dir = { x: 1, y: 0 };   // hacia dónde va a embestir
+    this.aim = { x, y };         // a dónde apunta mientras prepara un ataque
+    this.dashHit = false;
+    this.shockTimer = 0;
+    this.minions = [];
   }
 
   get alive() {
@@ -44,24 +99,28 @@ export class Enemy {
     sfx(this.alive ? 'hit' : 'enemyDie');
 
     // Empuje en dirección contraria a quien golpeó
+    const push = force * (this.t.knockback ?? 1);
     const dx = this.x - fromX;
     const dy = this.y - fromY;
     const len = Math.hypot(dx, dy) || 1;
-    this.kbx = (dx / len) * force;
-    this.kby = (dy / len) * force;
+    this.kbx = (dx / len) * push;
+    this.kby = (dy / len) * push;
 
     if (this.state === 'idle') this.state = 'chase';
 
-    // Un golpe interrumpe su ataque
-    if (this.state === 'windup') {
+    // Un golpe interrumpe su ataque (menos al tanque, y nunca en plena embestida)
+    if (this.state === 'windup' && !this.t.armor) {
       this.state = 'recover';
       this.stateTimer = 0.4;
     }
   }
 
-  update(dt, player, world) {
+  update(dt, player, world, game) {
+    const t = this.t;
     this.hitFlash = Math.max(0, this.hitFlash - dt);
+    this.shockTimer = Math.max(0, this.shockTimer - dt);
     this.stateTimer -= dt;
+    this.cooldown -= dt;
     this.animTime += dt;
     const startX = this.x;
     const startY = this.y;
@@ -76,31 +135,33 @@ export class Enemy {
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
 
     switch (this.state) {
       case 'idle':
-        if (dist <= this.aggroRange) this.state = 'chase';
+        if (dist <= t.aggro) this.state = 'chase';
         break;
 
       case 'chase':
-        if (dist > this.loseRange) {
-          this.state = 'idle';
-        } else if (dist <= this.attackRange) {
-          this.state = 'windup';
-          this.stateTimer = this.windupTime;
-        } else {
-          this.x += (dx / dist) * this.speed * dt;
-          this.y += (dy / dist) * this.speed * dt;
-        }
+        if (dist > t.lose) this.state = 'idle';
+        else this.chase(dt, dist, ux, uy, game);
         break;
 
       case 'windup':
-        if (this.stateTimer <= 0) {
-          // Si rodaste, takeDamage no hace nada
-          if (dist <= this.strikeRange) player.takeDamage(this.damage);
-          this.state = 'recover';
-          this.stateTimer = this.recoverTime;
+        this.aim.x = player.x;
+        this.aim.y = player.y;
+        if (this.stateTimer <= 0) this.strike(player, dist, ux, uy, world, game);
+        break;
+
+      case 'dash':
+        this.x += this.dir.x * t.dashSpeed * dt;
+        this.y += this.dir.y * t.dashSpeed * dt;
+        if (!this.dashHit && dist <= this.radius + 16) {
+          this.dashHit = true;
+          player.takeDamage(t.damage); // rodando no te hace nada
         }
+        if (this.stateTimer <= 0) this.recover();
         break;
 
       case 'recover':
@@ -108,55 +169,198 @@ export class Enemy {
         break;
     }
 
-    // No salirse del mundo
-    this.x = Math.min(Math.max(this.x, this.radius), world.width - this.radius);
-    this.y = Math.min(Math.max(this.y, this.radius), world.height - this.radius);
-    world.resolveMove(this, 12, startX, startY);
+    // Chocar con árboles, rocas y muros (y no salirse del mundo)
+    world.resolveMove(this, this.body, startX, startY);
+  }
+
+  // Cómo se mueve y cuándo decide atacar, según su tipo
+  chase(dt, dist, ux, uy, game) {
+    const t = this.t;
+
+    switch (t.attack) {
+      case 'melee':
+      case 'slam':
+        if (dist <= t.range) {
+          if (this.cooldown <= 0) this.startWindup(ux, uy);
+        } else {
+          this.moveToward(dt, ux, uy, 1);
+        }
+        break;
+
+      case 'dash':
+        if (dist <= t.range && this.cooldown <= 0) this.startWindup(ux, uy);
+        else if (dist > 90) this.moveToward(dt, ux, uy, 1);
+        break;
+
+      case 'shoot':
+      case 'summon':
+        // Se mantiene a distancia: se aleja si te acercas y se acerca si te alejas
+        if (dist < t.keepAway) this.moveToward(dt, ux, uy, -0.9);
+        else if (dist > t.prefer) this.moveToward(dt, ux, uy, 1);
+        if (this.cooldown <= 0 && dist <= t.range && this.canAct(game)) this.startWindup(ux, uy);
+        break;
+    }
+  }
+
+  // El invocador no invoca si ya tiene sus esbirros vivos
+  canAct(game) {
+    if (this.t.attack !== 'summon') return true;
+    this.minions = this.minions.filter((m) => m.alive);
+    return Boolean(game) && this.minions.length < this.t.maxMinions;
+  }
+
+  moveToward(dt, ux, uy, factor) {
+    this.x += ux * this.speed * factor * dt;
+    this.y += uy * this.speed * factor * dt;
+  }
+
+  startWindup(ux, uy) {
+    this.state = 'windup';
+    this.stateTimer = this.t.windup;
+    this.dir = { x: ux, y: uy }; // la embestida queda apuntada desde aquí
+    sfx('warn');
+  }
+
+  // Termina el aviso y ejecuta el ataque
+  strike(player, dist, ux, uy, world, game) {
+    const t = this.t;
+
+    switch (t.attack) {
+      case 'melee':
+        if (dist <= t.strike) player.takeDamage(t.damage);
+        break;
+
+      case 'slam':
+        if (dist <= t.slamRadius) player.takeDamage(t.damage);
+        this.shockTimer = 0.25;
+        sfx('slam');
+        break;
+
+      case 'shoot':
+        if (game) {
+          game.shots.push(new BossOrb(this.x, this.y, ux, uy, t.shotSpeed, t.damage, 22));
+          sfx('orbs');
+        }
+        break;
+
+      case 'summon':
+        if (game) this.summon(world, game);
+        break;
+
+      case 'dash':
+        this.state = 'dash';
+        this.stateTimer = t.dashTime;
+        this.dashHit = false;
+        sfx('charge');
+        return; // sigue embistiendo
+    }
+
+    this.recover();
+  }
+
+  recover() {
+    this.state = 'recover';
+    this.stateTimer = this.t.recover;
+    this.cooldown = this.t.cooldown ?? 0;
+  }
+
+  summon(world, game) {
+    sfx('quest');
+    // Solo invoca los que le faltan para llegar a su tope
+    this.minions = this.minions.filter((m) => m.alive);
+    const count = Math.min(this.t.minions, this.t.maxMinions - this.minions.length);
+    for (let i = 0; i < count; i++) {
+      if (game.enemies.length >= MAX_ENEMIES) break;
+      const angle = Math.random() * Math.PI * 2;
+      const imp = new Enemy(this.x + Math.cos(angle) * 36, this.y + Math.sin(angle) * 36, 'esbirro');
+      world.resolve(imp, imp.body);
+      imp.state = 'chase'; // nacen ya persiguiéndote
+      game.enemies.push(imp);
+      this.minions.push(imp);
+    }
+  }
+
+  // Lo que se dibuja en el suelo mientras prepara un ataque
+  drawTelegraph(ctx, cx, cy) {
+    const t = this.t;
+
+    if (this.state === 'windup') {
+      const progress = 1 - Math.max(0, this.stateTimer) / t.windup;
+
+      if (t.attack === 'melee') {
+        ctx.fillStyle = `rgba(255, 90, 60, ${0.15 + 0.25 * progress})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, t.strike, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (t.attack === 'slam') {
+        ctx.fillStyle = `rgba(255, 90, 60, ${0.12 + 0.25 * progress})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, t.slamRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 90, 60, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else if (t.attack === 'dash') {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(Math.atan2(this.dir.y, this.dir.x));
+        ctx.fillStyle = `rgba(255, 226, 122, ${0.15 + 0.3 * progress})`;
+        ctx.fillRect(0, -14, t.dashSpeed * t.dashTime, 28);
+        ctx.restore();
+      } else if (t.attack === 'shoot') {
+        // Una línea hacia donde va a disparar y un aro alrededor
+        ctx.strokeStyle = `rgba(200, 120, 255, ${0.15 + 0.4 * progress})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(Math.round(this.aim.x - (this.x - cx)), Math.round(this.aim.y - (this.y - cy)));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, this.radius + 6 + progress * 6, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (t.attack === 'summon') {
+        ctx.strokeStyle = `rgba(122, 255, 200, ${0.25 + 0.5 * progress})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20 + progress * 22, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // Onda del golpe del tanque
+    if (this.shockTimer > 0) {
+      const p = 1 - this.shockTimer / 0.25;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - p)})`;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, this.radius + (t.slamRadius - this.radius) * p, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   draw(ctx, camera) {
+    const t = this.t;
     const cx = Math.round(this.x - camera.x);
     const cy = Math.round(this.y - camera.y);
 
-    // Aviso del ataque: el círculo rojo crece hasta el alcance del golpe
-    if (this.state === 'windup') {
-      const progress = 1 - Math.max(0, this.stateTimer) / this.windupTime;
-      ctx.fillStyle = `rgba(255, 90, 60, ${0.15 + 0.25 * progress})`;
-      ctx.beginPath();
-      ctx.arc(cx, cy, this.strikeRange, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    this.drawTelegraph(ctx, cx, cy);
 
-    if (hasSprite('enemy')) {
-      drawShadow(ctx, cx, cy + 14, 14, 5);
+    if (hasSprite(t.sheet)) {
+      drawShadow(ctx, cx, cy + t.shadow.y, t.shadow.rx, t.shadow.ry);
 
-      // Se mueve más rápido mientras persigue
-      const frame = Math.floor(this.animTime * (this.state === 'chase' ? 7 : 3)) % 2;
-      drawFrame(ctx, 'enemy', frame, 0, cx, cy);
+      // Se mueve más rápido mientras persigue o embiste
+      const fps = this.state === 'chase' || this.state === 'dash' ? 7 : 3;
+      const frame = Math.floor(this.animTime * fps) % 2;
+      drawFrame(ctx, t.sheet, frame, t.row, cx, cy);
       if (this.state === 'windup') {
-        drawFrame(ctx, 'enemy', frame, 0, cx, cy, { tint: '#ff7a45', alpha: 0.55 });
+        drawFrame(ctx, t.sheet, frame, t.row, cx, cy, { tint: t.tint, alpha: 0.55 });
       }
       if (this.hitFlash > 0) {
-        drawFrame(ctx, 'enemy', frame, 0, cx, cy, { tint: '#ffffff' });
+        drawFrame(ctx, t.sheet, frame, t.row, cx, cy, { tint: '#ffffff' });
       }
     } else {
-      // Sin sprites: cuernos y cuerpo simples
-      ctx.fillStyle = '#5a1020';
-      ctx.beginPath();
-      ctx.moveTo(cx - 13, cy - 8);
-      ctx.lineTo(cx - 8, cy - 26);
-      ctx.lineTo(cx - 2, cy - 12);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx + 13, cy - 8);
-      ctx.lineTo(cx + 8, cy - 26);
-      ctx.lineTo(cx + 2, cy - 12);
-      ctx.fill();
-
-      let color = '#a32339';
-      if (this.state === 'windup') color = '#ff7a45';
-      if (this.hitFlash > 0) color = '#ffffff';
-      ctx.fillStyle = color;
+      // Sin sprites: un círculo del color de su tipo
+      ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : this.state === 'windup' ? t.tint : t.color;
       ctx.beginPath();
       ctx.arc(cx, cy, this.radius, 0, Math.PI * 2);
       ctx.fill();

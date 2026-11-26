@@ -49,6 +49,8 @@ const player = new Player(spawn.x, spawn.y);
 const quest = new Quest();
 
 const enemies = [];
+const shots = []; // esferas de sombra que disparan los demonios
+const game = { enemies, shots }; // lo que los demonios pueden usar para disparar o invocar
 const souls = [];      // almas sueltas por los demonios
 let boss = null;
 let bossDefeated = false; // el jefe derrotado ya no vuelve
@@ -65,6 +67,19 @@ let resetting = false; // true mientras se borra la partida, para no volver a gu
 const DEATH_TIME = 2.4;
 const VICTORY_TIME = 4;
 const AUTOSAVE_EVERY = 5; // segundos
+
+
+// Evitar zoom del navegador con Ctrl + / Ctrl - / Ctrl 0
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+
+// Evitar zoom con Ctrl + rueda del ratón (y pellizco en trackpad)
+window.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
 
 // Esc cierra el mapa grande
 window.addEventListener('keydown', (e) => {
@@ -112,31 +127,33 @@ window.addEventListener('pagehide', saveGame);
 function spawnEnemies() {
   const list = [];
 
-  // Campamentos de demonios repartidos por el reino
+  // Campamentos de demonios repartidos por el reino (cada uno con sus tipos)
   for (const camp of world.camps) {
-    for (let i = 0; i < camp.count; i++) {
-      const angle = (Math.PI * 2 * i) / camp.count + camp.x * 0.001;
-      list.push(new Enemy(camp.x + Math.cos(angle) * 48, camp.y + Math.sin(angle) * 48));
-    }
+    camp.types.forEach((type, i) => {
+      const angle = (Math.PI * 2 * i) / camp.types.length + camp.x * 0.001;
+      list.push(new Enemy(camp.x + Math.cos(angle) * 48, camp.y + Math.sin(angle) * 48, type));
+    });
   }
 
   // Los guardias del castillo, en círculo alrededor de sus muros
   const base = world.bossBase;
-  for (let i = 0; i < 5; i++) {
-    const angle = (Math.PI * 2 * i) / 5 + 0.3;
+  const guardTypes = ['menor', 'lanzador', 'menor', 'veloz', 'tanque'];
+  guardTypes.forEach((type, i) => {
+    const angle = (Math.PI * 2 * i) / guardTypes.length + 0.3;
     const distance = base.radius + 330;
     list.push(
-      new Enemy(base.x + Math.cos(angle) * distance, base.y + Math.sin(angle) * distance)
+      new Enemy(base.x + Math.cos(angle) * distance, base.y + Math.sin(angle) * distance, type)
     );
-  }
+  });
 
-  for (const e of list) world.resolve(e, 12);
+  for (const e of list) world.resolve(e, e.body);
   return list;
 }
 
 // Devuelve a su lugar a los demonios y al jefe (si sigue vivo)
 function resetEncounters() {
   enemies.length = 0;
+  shots.length = 0;
   enemies.push(...spawnEnemies());
 
   if (bossDefeated) {
@@ -259,7 +276,11 @@ function updatePlaying(dt, wantsInteract, interactable) {
 
   player.update(dt, input, world, camera, targets);
   spells.update(dt, player, input, camera, targets, world);
-  for (const e of enemies) e.update(dt, player, world);
+  for (const e of enemies) e.update(dt, player, world, game);
+  for (let i = shots.length - 1; i >= 0; i--) {
+    shots[i].update(dt, player, world);
+    if (!shots[i].alive) shots.splice(i, 1);
+  }
   separateEnemies(enemies);
 
   if (boss) {
@@ -443,8 +464,9 @@ function loop(now) {
   if (lostSouls) lostSouls.draw(ctx, camera);
   souls.forEach((s) => s.draw(ctx, camera));
   drawWorldObjects();
+  shots.forEach((s) => s.draw(ctx, camera));
   spells.draw(ctx, camera);
-  hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.length, boss);
+  hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.filter((e) => e.type !== 'esbirro').length, boss);
   input.minimapRect = minimap.draw(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());
   if (state === 'map') minimap.drawBig(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());
   if (victoryTimer > 0) drawVictory();

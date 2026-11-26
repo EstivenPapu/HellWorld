@@ -3,13 +3,13 @@ import { sfx } from '../core/audio.js';
 
 // Los 3 hechizos de la 0.1. Los números se ajustan aquí.
 export const SPELLS = [
-  { id: 'flame', name: 'Llama', keyLabel: 'Clic der.', cost: 12, cooldown: 0.35, color: '#ff8a3d' },
+  { id: 'flame', name: 'Llama', keyLabel: 'Clic der.', cost: 15, cooldown: 0.35, color: '#ff8a3d' },
   { id: 'nova', name: 'Nova', keyLabel: 'Q', cost: 25, cooldown: 2.0, color: '#b48cff' },
-  { id: 'shield', name: 'Escudo', keyLabel: 'E', cost: 20, cooldown: 6.0, color: '#5fe0c0' },
+  { id: 'shield', name: 'Escudo', keyLabel: 'E', cost: 10, cooldown: 6.0, color: '#5fe0c0' },
 ];
 
-const FLAME = { speed: 560, range: 620, damage: 20, radius: 9 };
-const NOVA = { radius: 140, damage: 18, force: 420, duration: 0.35 };
+const FLAME = { speed: 560, range: 620, damage: 5, radius: 9 };
+const NOVA = { radius: 130, damage: 25, force: 420, duration: 0.35 };
 const SHIELD = { duration: 5 };
 
 // Se encarga de lanzar los hechizos y de mover lo que lanzan
