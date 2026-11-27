@@ -106,6 +106,7 @@ export class TouchControls {
         color: spell.color,
         press: (i) => i.pressSpell(index),
       })),
+      { id: 'heal', label: 'Curar', color: '#6fe08a', hold: (i, on) => i.setHeal(on) },
       { id: 'interact', label: 'Usar', color: '#ffd27a', press: (i) => i.pressInteract() },
     ];
 
@@ -118,12 +119,16 @@ export class TouchControls {
       label.textContent = def.label;
       el.append(cooldown, label);
 
-      el.addEventListener('pointerdown', (e) => {
+            el.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         el.classList.add('down');
-        def.press(this.input);
+        if (def.press) def.press(this.input);
+        if (def.hold) def.hold(this.input, true);
       });
-      const release = () => el.classList.remove('down');
+      const release = () => {
+        el.classList.remove('down');
+        if (def.hold) def.hold(this.input, false);
+      };
       el.addEventListener('pointerup', release);
       el.addEventListener('pointercancel', release);
       el.addEventListener('pointerleave', release);

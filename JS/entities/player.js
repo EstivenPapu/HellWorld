@@ -20,6 +20,9 @@ const ROLL = {
 const HIT_INVULN = 0.5; // segundos sin recibir daño después de un golpe
 const AUTO_AIM_RANGE = 380; // en el celular apunta solo a lo que esté a esta distancia
 const BODY_RADIUS = 11;     // qué tan ancho es para chocar con árboles y muros
+// Curación: segundos de concentración antes de empezar a curar, y qué parte de la vida máxima
+// recupera por segundo. Mientras te concentras no te puedes mover.
+const HEAL = { delay: 0.6, rate: 0.1 };
 
 // Valores base y cuánto crece cada uno por nivel (se ajustan aquí)
 const BASE_HP = 30;
@@ -75,6 +78,7 @@ export class Player {
 
     this.animTime = 0; // para animar los pasos
     this.moving = false;
+    this.healCharge = 0; // segundos que lleva concentrándose para curarse
   }
 
   get isRolling() {
@@ -141,6 +145,9 @@ export class Player {
       sfx('attack');
     }
 
+    // Curarse: mantener Shift te deja quieto y concentrado
+    this.concentrating = this.updateHeal(dt, input);
+    
     // Movimiento
     let vx;
     let vy;
@@ -148,7 +155,7 @@ export class Player {
       vx = this.rollDir.x * ROLL.speed;
       vy = this.rollDir.y * ROLL.speed;
     } else {
-      const factor = this.isAttacking ? ATTACK.moveFactor : 1;
+      const factor = this.concentrating ? 0 : this.isAttacking ? ATTACK.moveFactor : 1;
       vx = move.x * this.speed * factor;
       vy = move.y * this.speed * factor;
     }
@@ -167,6 +174,27 @@ export class Player {
     world.resolveMove(this, BODY_RADIUS, prevX, prevY);
 
     if (this.isAttacking) this.applyAttack(targets);
+  }
+
+  // Concentrarse para curarse: gratis, pero lento, y no te deja moverte ni atacar
+  updateHeal(dt, input) {
+    const wants = input.healHeld() && this.hp < this.maxHp && !this.isRolling && !this.isAttacking;
+    if (!wants) {
+      this.healCharge = 0;
+      return false;
+    }
+
+    this.healCharge += dt;
+    if (this.healCharge > HEAL.delay) {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * HEAL.rate * dt);
+      sfx('heal');
+    }
+    return true;
+  }
+
+  // Recibir un golpe o lanzar un hechizo interrumpe la concentración
+  cancelHeal() {
+    this.healCharge = 0;
   }
 
   // En el celular no hay mouse: apunta al demonio más cercano o hacia donde caminas
@@ -305,12 +333,14 @@ export class Player {
       this.shieldTimer = 0;
       this.invulnTimer = 0.3;
       sfx('shieldBreak');
+      this.healCharge = 0;
       return false;
     }
 
     this.hp = Math.max(0, this.hp - amount);
     this.invulnTimer = HIT_INVULN;
     sfx('hurt');
+    this.healCharge = 0;
     return true;
   }
 
@@ -391,6 +421,30 @@ export class Player {
         6,
         6
       );
+    }
+
+    // Concentrándose para curarse: primero un aro que se completa y luego un resplandor
+    // verde con puntos que suben
+    if (this.healCharge > 0) {
+      const t = performance.now() / 1000;
+      if (this.healCharge < HEAL.delay) {
+        ctx.strokeStyle = 'rgba(111, 224, 138, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, -Math.PI / 2, -Math.PI / 2 + (this.healCharge / HEAL.delay) * Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+        ctx.fillStyle = `rgba(111, 224, 138, ${0.12 + 0.1 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+        ctx.fill();
+        for (let i = 0; i < 4; i++) {
+          const p = (t * 0.9 + i / 4) % 1;
+          ctx.fillStyle = `rgba(160, 255, 180, ${1 - p})`;
+          ctx.fillRect(Math.round(cx - 14 + i * 9 + Math.sin(t * 3 + i) * 3), Math.round(cy + 10 - p * 36), 3, 3);
+        }
+      }
     }
 
     // Escudo: parpadea cuando está por acabarse

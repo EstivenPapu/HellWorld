@@ -41,6 +41,10 @@ function noise(x, y, scale, seed) {
   return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
 
+function rectsTouch(a, b, pad = 0) {
+  return a.x0 - pad < b.x1 && a.x1 + pad > b.x0 && a.y0 - pad < b.y1 && a.y1 + pad > b.y0;
+}
+
 function inRect(x, y, r, pad = 0) {
   return x > r.x0 - pad && x < r.x1 + pad && y > r.y0 - pad && y < r.y1 + pad;
 }
@@ -62,7 +66,7 @@ export class World {
       y1: LAYOUT.boss.y + half,
     };
 
-    this.hazards = LAYOUT.hazards.map((h) => ({ ...h }));
+    this.hazards = []; // brasas: se generan en scatterHazards()
     this.camps = LAYOUT.camps;
 
     this.wallGrid = new Uint8Array(COLS * COLS); // 0 = libre, 1..5 = muro (1 + tipo de bloque)
@@ -82,6 +86,7 @@ export class World {
     const rnd = mulberry32(20261123);
     this.buildCastle();
     for (const ruin of LAYOUT.ruins) this.buildRuin(ruin, rnd);
+    this.scatterHazards();
     this.scatterProps(rnd);
   }
 
@@ -174,6 +179,71 @@ export class World {
       if (inRect(x, y, { x0: h.x, y0: h.y, x1: h.x + h.w, y1: h.y + h.h }, 64)) return true;
     }
     return false;
+  }
+
+  // Brasas repartidas por el mapa: grupos de 2x2 a 4x4 cuadros. La mitad aparece cerca de los
+  // campamentos de demonios, para que un mal paso en plena pelea te cueste vida.
+  scatterHazards() {
+    const cfg = LAYOUT.hazardPatches;
+    const rnd = mulberry32(777); // semilla propia: no cambia el bosque
+    const spread = cfg.maxSize - cfg.minSize + 1;
+    let tries = 0;
+
+    while (this.hazards.length < cfg.count && tries < 5000) {
+      tries++;
+      const w = cfg.minSize + Math.floor(rnd() * spread);
+      const h = cfg.minSize + Math.floor(rnd() * spread);
+
+      let cx;
+      let cy;
+      if (this.hazards.length % 2 === 0 && LAYOUT.camps.length) {
+        const camp = LAYOUT.camps[Math.floor(rnd() * LAYOUT.camps.length)];
+        const angle = rnd() * Math.PI * 2;
+        const dist = 130 + rnd() * 110;
+        cx = camp.x + Math.cos(angle) * dist;
+        cy = camp.y + Math.sin(angle) * dist;
+      } else {
+        cx = 250 + rnd() * (WORLD_SIZE - 500);
+        cy = 250 + rnd() * (WORLD_SIZE - 500);
+      }
+
+      const rect = {
+        x: Math.round((cx - (w * T) / 2) / T) * T,
+        y: Math.round((cy - (h * T) / 2) / T) * T,
+        w: w * T,
+        h: h * T,
+        damage: cfg.damage,
+      };
+      if (this.patchFits(rect)) this.hazards.push(rect);
+    }
+  }
+
+  // ¿Cabe este grupo de brasas sin estorbar al altar, las ruinas, el castillo o un campamento?
+  patchFits(r) {
+    const x1 = r.x + r.w;
+    const y1 = r.y + r.h;
+    const mx = r.x + r.w / 2;
+    const my = r.y + r.h / 2;
+
+    if (r.x < 200 || r.y < 200 || x1 > WORLD_SIZE - 200 || y1 > WORLD_SIZE - 200) return false;
+
+    // Lejos del altar, de la reliquia y del castillo
+    if (Math.hypot(mx - LAYOUT.altar.x, my - LAYOUT.altar.y) < 450) return false;
+    if (Math.hypot(mx - LAYOUT.relic.x, my - LAYOUT.relic.y) < 260) return false;
+    if (Math.hypot(mx - LAYOUT.boss.x, my - LAYOUT.boss.y) < 760) return false;
+
+    // Sin tocar ruinas ni otras brasas
+    const box = { x0: r.x, y0: r.y, x1, y1 };
+    for (const f of this.floorRects) if (rectsTouch(box, f, 80)) return false;
+    for (const h of this.hazards) {
+      if (rectsTouch(box, { x0: h.x, y0: h.y, x1: h.x + h.w, y1: h.y + h.h }, 64)) return false;
+    }
+
+    // Sin tapar a los demonios de un campamento
+    for (const c of LAYOUT.camps) {
+      if (c.x > r.x - 70 && c.x < x1 + 70 && c.y > r.y - 70 && c.y < y1 + 70) return false;
+    }
+    return true;
   }
 
   // Árboles y rocas: más espesos en unas zonas y casi vacíos en otras (claros)

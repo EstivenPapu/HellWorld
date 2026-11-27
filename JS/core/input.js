@@ -18,6 +18,7 @@ export class Input {
     const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
     this.isTouch = Boolean(coarse && coarse.matches);
     this.touchMove = { x: 0, y: 0 };
+    this.touchHeal = false; // el botón Curar del celular (se mantiene presionado)
     window.addEventListener('touchstart', () => {
       this.isTouch = true;
     }, { passive: true });
@@ -79,6 +80,15 @@ export class Input {
   // Posición del mouse dentro del mundo (no de la pantalla)
   getAimWorld(camera) {
     return { x: this.mouse.x + camera.x, y: this.mouse.y + camera.y };
+  }
+
+  // ¿Está concentrándose para curarse? (mantener Shift, o el botón Curar en el celular)
+  healHeld() {
+    return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.touchHeal;
+  }
+
+  setHeal(on) {
+    this.touchHeal = on;
   }
 
   // Botones de la pantalla táctil

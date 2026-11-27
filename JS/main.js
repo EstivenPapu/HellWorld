@@ -7,6 +7,7 @@ import { LAYOUT } from './systems/layout.js';
 import { Hud } from './systems/hud.js';
 import { SpellSystem } from './systems/spells.js';
 import { Minimap } from './systems/minimap.js';
+import { Ambient } from './systems/ambient.js'
 import { AltarMenu } from './systems/altar-menu.js';
 import { TouchControls } from './systems/touch-controls.js';
 import { Dialog } from './systems/dialog.js';
@@ -39,6 +40,7 @@ const world = new World();
 const camera = new Camera(world.width, world.height);
 const hud = new Hud();
 const minimap = new Minimap(world);
+const ambient = new Ambient();
 const spells = new SpellSystem();
 
 // El altar es el punto de inicio y de reaparición; el Peregrino vive cerca
@@ -466,6 +468,7 @@ function loop(now) {
   drawWorldObjects();
   shots.forEach((s) => s.draw(ctx, camera));
   spells.draw(ctx, camera);
+    ambient.draw(ctx, camera, canvas.width, canvas.height, dt, input.isTouch);
   hud.draw(ctx, player, spells, canvas.width, canvas.height, enemies.filter((e) => e.type !== 'esbirro').length, boss);
   input.minimapRect = minimap.draw(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());
   if (state === 'map') minimap.drawBig(ctx, canvas.width, canvas.height, input.isTouch, mapInfo());

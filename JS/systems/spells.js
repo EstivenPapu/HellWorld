@@ -42,6 +42,7 @@ export class SpellSystem {
       if (!player.spendMana(SPELLS[i].cost)) continue;
 
       this.cast(i, player, enemies);
+      player.cancelHeal();
       this.cooldowns[i] = SPELLS[i].cooldown;
     }
 

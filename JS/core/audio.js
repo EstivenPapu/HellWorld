@@ -3,10 +3,10 @@
 // primer toque o tecla, por eso se "desbloquea" con la primera interacción.
 
 const MASTER_VOLUME = 0.8;
-const MIN_GAP = { hit: 50, bossHit: 60, soul: 40, attack: 80, enemyDie: 60 }; // ms entre repeticiones
+const MIN_GAP = { hit: 50, bossHit: 60, soul: 40, attack: 80, enemyDie: 60, heal: 450 }; // ms entre repeticiones
 const SCALE = [110, 130.81, 146.83, 164.81, 196, 220]; // La menor pentatónica, grave
 
-class GameAudio {
+class GameAudio { 
   constructor() {
     this.ctx = null;
     this.muted = false;
@@ -54,6 +54,7 @@ class GameAudio {
         this.tone({ freq: 990, duration: 0.4, volume: 0.12, delay: 0.08 });
       },
       nomana: () => this.tone({ freq: 130, to: 110, type: 'square', duration: 0.12, volume: 0.1 }),
+      heal: () => this.tone({ freq: 523, to: 784, duration: 0.25, volume: 0.07 }),
       soul: () => {
         this.tone({ freq: 880, to: 1320, duration: 0.12, volume: 0.1 });
         this.tone({ freq: 1320, to: 1760, duration: 0.1, volume: 0.07, delay: 0.07 });

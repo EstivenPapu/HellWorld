@@ -39,6 +39,8 @@ export const LAYOUT = {
     { x: 5000, y: 2300, types: ['veloz', 'lanzador', 'menor'] },
   ],
 
-  // Zonas que hacen daño (alineadas al piso de 32 px)
-  hazards: [{ x: 704, y: 5568, w: 192, h: 192, damage: 15 }],
+  // Brasas: grupos de cuadros que hacen daño si los pisas (los demonios no les temen).
+  // Se reparten al azar por el mapa (siempre en los mismos lugares); la mitad queda cerca de
+  // campamentos de demonios. minSize y maxSize son el tamaño del grupo en cuadros.
+  hazardPatches: { count: 20, minSize: 2, maxSize: 4, damage: 8 },
 };

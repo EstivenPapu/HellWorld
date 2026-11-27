@@ -237,6 +237,7 @@ canvas {
 .btn-spell0 { width: 62px; height: 62px; right: 4px; bottom: 106px; }
 .btn-spell1 { width: 62px; height: 62px; right: 76px; bottom: 114px; }
 .btn-spell2 { width: 62px; height: 62px; right: 148px; bottom: 106px; }
+.btn-heal { width: 66px; height: 66px; right: 176px; bottom: 6px; }
 
 .btn-interact {
   display: none;
